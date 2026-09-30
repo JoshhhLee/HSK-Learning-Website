@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hanzi Path · HSK</title>
+  <meta name="description" content="Interactive Mandarin study site for HSK: reading, writing, listening and speaking.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c0392b'/%3E%3Ctext x='32' y='46' font-size='38' text-anchor='middle' fill='white' font-family='serif'%3E学%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <a class="brand" href="#/">
+        <span class="seal">学</span>
+        <span><b>Hanzi Path</b><small>HSK study</small></span>
+      </a>
+      <nav class="nav" id="nav">
+        <a href="#/" data-r="home"><span class="ico">⌂</span>Home</a>
+        <a href="#/pinyin" data-r="pinyin"><span class="ico">ā</span>Pinyin</a>
+        <a href="#/level/1" data-r="level"><span class="ico">课</span>Lessons</a>
+        <a href="#/review" data-r="review"><span class="ico">↻</span>Review <span class="badge hidden" id="due-badge"></span></a>
+        <a href="#/write" data-r="write"><span class="ico">写</span>Writing</a>
+        <a href="#/test/1" data-r="test"><span class="ico">考</span>Test</a>
+        <a href="#/settings" data-r="settings"><span class="ico">⚙</span>Settings</a>
+      </nav>
+      <div class="foot">Progress is saved in this browser.</div>
+    </aside>
+    <main id="view"></main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.7.2/dist/hanzi-writer.min.js"></script>
+  <script src="js/core.js"></script>
+  <script src="js/data/pinyin.js"></script>
+  <script src="js/data/hsk1.js"></script>
+  <script src="js/data/chars.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

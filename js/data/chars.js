@@ -1,0 +1,33 @@
+/* Single-character readings and meanings for characters that appear inside
+ * HSK words, writing lists and radical examples. Used by the writing pad and
+ * the word popover. Vocabulary entries take priority over these. */
+HSK.addChars([
+  ['一', 'yī', 'one'], ['二', 'èr', 'two'], ['三', 'sān', 'three'], ['四', 'sì', 'four'], ['五', 'wǔ', 'five'],
+  ['六', 'liù', 'six'], ['七', 'qī', 'seven'], ['八', 'bā', 'eight'], ['九', 'jiǔ', 'nine'], ['十', 'shí', 'ten'],
+  ['们', 'men', 'plural suffix for people'], ['对', 'duì', 'correct; towards'], ['起', 'qǐ', 'to rise; get up'],
+  ['关', 'guān', 'to close; relation'], ['系', 'xì', 'system; to relate'], ['山', 'shān', 'mountain'],
+  ['客', 'kè', 'guest'], ['气', 'qì', 'air; gas'], ['再', 'zài', 'again'], ['心', 'xīn', 'heart'],
+  ['中', 'zhōng', 'middle; China'], ['什', 'shén', '(in 什么) what'], ['么', 'me', '(suffix in 什么, 怎么)'],
+  ['名', 'míng', 'name'], ['老', 'lǎo', 'old'], ['师', 'shī', 'teacher; master'], ['生', 'shēng', 'to be born; life'],
+  ['美', 'měi', 'beautiful; America'], ['儿', 'ér', 'child; son; -r suffix'], ['汉', 'hàn', 'Han (Chinese)'],
+  ['语', 'yǔ', 'language'], ['同', 'tóng', 'same; together'], ['朋', 'péng', 'friend'], ['友', 'yǒu', 'friend'],
+  ['女', 'nǚ', 'woman; female'], ['今', 'jīn', 'now; this (year/day)'], ['东', 'dōng', 'east'], ['西', 'xī', 'west'],
+  ['妈', 'mā', 'mom'], ['怎', 'zěn', 'how'], ['天', 'tiān', 'day; sky'], ['星', 'xīng', 'star'],
+  ['期', 'qī', 'period; time'], ['昨', 'zuó', 'yesterday'], ['明', 'míng', 'bright; next (day/year)'],
+  ['校', 'xiào', 'school'], ['米', 'mǐ', 'rice; meter'], ['饭', 'fàn', 'cooked rice; meal'], ['下', 'xià', 'down; below'],
+  ['午', 'wǔ', 'noon'], ['商', 'shāng', 'trade; business'], ['店', 'diàn', 'shop'], ['杯', 'bēi', 'cup'],
+  ['子', 'zi', 'noun suffix; child (zǐ)'], ['钟', 'zhōng', 'clock; bell'], ['工', 'gōng', 'work'], ['椅', 'yǐ', 'chair'],
+  ['面', 'miàn', 'face; side; noodles'], ['作', 'zuò', 'to do; to make'], ['医', 'yī', 'medicine; doctor'],
+  ['院', 'yuàn', 'courtyard; institution'], ['爸', 'bà', 'dad'], ['末', 'mò', 'end; tip'], ['桌', 'zhuō', 'table'],
+  ['电', 'diàn', 'electricity'], ['脑', 'nǎo', 'brain'], ['方', 'fāng', 'square; direction'], ['衬', 'chèn', 'lining'],
+  ['衫', 'shān', 'shirt'], ['现', 'xiàn', 'present; to appear'], ['时', 'shí', 'time; hour'], ['候', 'hòu', 'to wait; time'],
+  ['影', 'yǐng', 'shadow; film'], ['北', 'běi', 'north'], ['京', 'jīng', 'capital city'], ['雨', 'yǔ', 'rain'],
+  ['样', 'yàng', 'appearance; kind'], ['姐', 'jiě', 'older sister'], ['身', 'shēn', 'body'], ['体', 'tǐ', 'body; form'],
+  ['果', 'guǒ', 'fruit; result'], ['饿', 'è', 'hungry'], ['日', 'rì', 'sun; day'], ['目', 'mù', 'eye'],
+  ['习', 'xí', 'to practise'], ['睡', 'shuì', 'to sleep'], ['觉', 'jiào', 'sleep (jué: to feel)'], ['视', 'shì', 'to look at'],
+  ['喜', 'xǐ', 'to like; happy'], ['欢', 'huān', 'joyful'], ['打', 'dǎ', 'to hit; to make (a call)'], ['话', 'huà', 'speech; words'],
+  ['卫', 'wèi', 'to guard'], ['苹', 'píng', '(in 苹果) apple'], ['先', 'xiān', 'first; before'], ['衣', 'yī', 'clothing'],
+  ['服', 'fú', 'clothes; to serve'], ['漂', 'piào', '(in 漂亮) pretty'], ['亮', 'liàng', 'bright'], ['出', 'chū', 'to go out'],
+  ['飞', 'fēi', 'to fly'], ['认', 'rèn', 'to recognise'], ['识', 'shi', 'to know (shí)'], ['租', 'zū', 'to rent'],
+  ['高', 'gāo', 'tall; high'], ['兴', 'xìng', 'mood; interest'], ['机', 'jī', 'machine'], ['以', 'yǐ', 'by means of; so as to'],
+]);
