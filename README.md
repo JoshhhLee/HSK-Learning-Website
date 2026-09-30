@@ -38,10 +38,10 @@ js/data/pinyin.js   pinyin & stroke reference data
 
 ## Adding a level
 
-Create `js/data/hsk2.js` calling `HSK.registerLevel({ level: 2, ... })` with the same shape as `hsk1.js`,
+Create `js/data/hsk3.js` calling `HSK.registerLevel({ level: 3, ... })` with the same shape as `hsk1.js`,
 then add a `<script>` tag for it in `index.html`. Sentences are written with spaces between words
 (`我 是 学生 。`). The app then generates pinyin, tap-to-translate and quizzes automatically.
-To force a reading, write it in braces: `长{zhǎng}`, `看过{guo}`, `是不是{shì bu shì}`.
+To force a reading, write it in braces: `长{zhǎng}`, `过{guo}`, `是不是{shì bu shì}`.
 Single characters that only appear inside words need a gloss in `js/data/chars.js`.
 
 ## Online services used
