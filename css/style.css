@@ -63,7 +63,7 @@ p { margin: 0 0 .8em; }
 .hidden { display: none !important; }
 
 /* ---------- Layout ---------- */
-.app { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
 .side {
   position: sticky; top: 0; height: 100vh; padding: 20px 14px; border-right: 1px solid var(--line);
   background: var(--panel); display: flex; flex-direction: column; gap: 4px;
@@ -88,7 +88,7 @@ p { margin: 0 0 .8em; }
 main { padding: 28px clamp(16px, 4vw, 48px) 80px; max-width: 1100px; width: 100%; }
 
 @media (max-width: 820px) {
-  .app { grid-template-columns: 1fr; }
+  .app { grid-template-columns: minmax(0, 1fr); }
   .side {
     position: fixed; bottom: 0; top: auto; left: 0; right: 0; height: auto; z-index: 20; flex-direction: row;
     padding: 6px; border-right: 0; border-top: 1px solid var(--line); justify-content: space-around;

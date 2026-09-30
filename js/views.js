@@ -359,6 +359,11 @@ const Views = (() => {
         <div class="body">${g.body}</div>
         ${g.examples.map(e => `<div class="ex"><div>${sentence(e[0])}</div>${sayBtn(e[0])}<div class="en">${esc(e[1])}</div></div>`).join('')}
       </div>`).join('')}
+      ${ls.saying ? `<div class="card" style="border-left:4px solid var(--jade)"><span class="pill jade">Common saying 俗语</span>
+        <div class="row" style="margin-top:10px"><span class="han" style="font-size:1.6rem">${esc(ls.saying[0])}</span><span class="spacer"></span>${sayBtn(ls.saying[0])}</div>
+        <div style="font-weight:600">${esc(ls.saying[1])}</div>
+        <div class="muted small" style="margin-top:6px">Literally: ${esc(ls.saying[2])}</div>
+        <div>Meaning: <b>${esc(ls.saying[3])}</b></div></div>` : ''}
       ${ls.culture ? `<div class="card" style="border-left:4px solid var(--accent)"><span class="pill red">Culture</span><h3 style="margin-top:8px">${esc(ls.culture.title)}</h3><div class="muted">${ls.culture.body}</div></div>` : ''}
     </div>`;
   }
@@ -422,6 +427,10 @@ const Views = (() => {
     const chars = HSK.util.hanChars(ls.words.filter(w => !w.extra).map(w => w.hz).join('') + ls.chars.write.join(''));
     const ordered = [...ls.chars.write, ...chars.filter(c => !ls.chars.write.includes(c))];
     t.innerHTML = `<div class="card" id="pad"></div>
+      ${ls.charNote ? `<div class="card section"><span class="pill jade">How characters are built</span>
+        <h3 style="margin-top:8px">${esc(ls.charNote.title)}</h3><div class="muted">${ls.charNote.body}</div>
+        <div class="row" style="margin-top:10px">${ls.charNote.chars.map(c => `<span class="tok w han" data-word="${esc(c)}" style="font-size:2rem;padding:2px 8px;border:1px solid var(--line);border-radius:10px">${esc(c)}</span>`).join('')}</div>
+        <p class="small muted" style="margin-top:8px">Tap a character to see its strokes.</p></div>` : ''}
       <div class="grid g2 section">
         ${ls.chars.strokes ? `<div class="card"><h3>Strokes in this lesson</h3>${ls.chars.strokes.map(s => {
           const st = HSK.strokes.find(x => x[0] === s);
