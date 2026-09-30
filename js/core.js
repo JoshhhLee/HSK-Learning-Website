@@ -184,7 +184,7 @@ window.HSK = {
       else if (t.punct) { out += PUNCT[t.hz] || t.hz; glue = false; }
       else { out += (glue ? '' : ' ') + P.word(t.py); glue = false; }
     });
-    return out.trim().replace(/(^|[.?!]\s+"?|:\s*")([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ])/g, (m, a, b) => a + b.toUpperCase());
+    return out.trim().replace(/(^"?|[.?!]"?\s+"?|:\s*")([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ])/g, (m, a, b) => a + b.toUpperCase());
   };
 
   HSK.isHan = isHan;

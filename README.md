@@ -16,7 +16,7 @@ Chrome works too. Firefox has no speech recognition.
 | Part | What it does |
 |---|---|
 | Pinyin | Tones, sounds chart, spelling rules, listening drills (tones, similar sounds, tone pairs) |
-| Lessons | HSK 1–2 (15 lessons each), HSK 3 and HSK 4 (20 lessons each): Words · Dialogue · Grammar · Writing · Practice · Speaking. HSK 3 adds sayings and character-building notes; HSK 4 adds reading passages |
+| Lessons | HSK 1–2 (15 lessons each), HSK 3 and HSK 4 (20 lessons each), HSK 5 lessons 1–18 (Book 5A): Words · Dialogue · Grammar · Writing · Practice · Speaking. HSK 3 adds sayings and character-building notes; HSK 4 adds reading passages |
 | Review | Spaced-repetition flashcards (read / listen / recall) |
 | Writing | Stroke-order animation and tracing for every character, per level, plus the basic strokes |
 | Test | HSK-style practice test per level (listening + reading) |
@@ -35,13 +35,15 @@ js/data/hsk2.js     HSK 2 lessons
 js/data/hsk3.js     HSK 3 lessons
 js/data/hsk4-words.js  HSK 4 word lists (generated from the books' vocabulary index)
 js/data/hsk4.js     HSK 4 lessons
+js/data/hsk5-words.js  HSK 5 word lists (Book 5A index)
+js/data/hsk5.js     HSK 5 lessons 1–18
 js/data/chars.js    single-character readings
 js/data/pinyin.js   pinyin & stroke reference data
 ```
 
 ## Adding a level
 
-Create `js/data/hsk5.js` calling `HSK.registerLevel({ level: 5, ... })` with the same shape as `hsk1.js`,
+Create `js/data/hsk6.js` calling `HSK.registerLevel({ level: 6, ... })` with the same shape as `hsk1.js`,
 then add a `<script>` tag for it in `index.html`. Sentences are written with spaces between words
 (`我 是 学生 。`). The app then generates pinyin, tap-to-translate and quizzes automatically.
 To force a reading, write it in braces: `长{zhǎng}`, `过{guo}`, `着{zháo}`, `是不是{shì bu shì}`.
