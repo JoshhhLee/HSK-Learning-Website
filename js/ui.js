@@ -27,7 +27,21 @@ const UI = (() => {
   /** Sentence with pinyin above each word; words are tappable. */
   function sentence(s, { marks } = {}) {
     let ci = 0;
-    return `<div class="sent">${HSK.tokenize(s).map(t => {
+    // keep punctuation on the same line as its word: closing marks stick to the word before,
+    // opening quotes to the word after
+    const out = [];
+    let open = '';
+    HSK.tokenize(s).forEach(t => {
+      const html = render(t);
+      if (t.punct && /^[“（《]$/.test(t.hz)) { open += html; return; }
+      if (t.punct && out.length) { out[out.length - 1] = `<span class="grp">${out[out.length - 1]}${html}</span>`; return; }
+      out.push(open ? `<span class="grp">${open}${html}</span>` : html);
+      open = '';
+    });
+    if (open) out.push(open);
+    return `<div class="sent">${out.join('')}</div>`;
+
+    function render(t) {
       if (t.punct) return `<span class="tok punct"><span class="p"></span><span class="h">${esc(t.hz)}</span></span>`;
       let h;
       if (marks) {
@@ -37,7 +51,7 @@ const UI = (() => {
         }).join('');
       } else h = esc(t.hz);
       return `<span class="tok w" data-word="${esc(t.hz)}" data-py="${esc(t.py)}"><span class="p">${t.py ? pyHTML(t.py) : ''}</span><span class="h">${h}</span></span>`;
-    }).join('')}</div>`;
+    }
   }
 
   /* ---------- Toast ---------- */
@@ -54,7 +68,7 @@ const UI = (() => {
   function closePop() { if (pop) { pop.remove(); pop = null; } }
   function openPop(anchor, hz, pyOverride) {
     closePop();
-    const w = HSK.dict.get(`${hz}·${pyOverride}`) || HSK.dict.get(hz) || HSK.tokenize(hz)[0] || { hz, py: '', en: '' };
+    const w = HSK.dict.get(`${hz}·${pyOverride}`) || HSK.dict.get(hz) || ([...hz].length === 1 ? HSK.charInfo(hz) : HSK.tokenize(hz)[0]) || { hz, py: '', en: '' };
     const py = pyOverride || w.py;
     pop = document.createElement('div');
     pop.className = 'pop';

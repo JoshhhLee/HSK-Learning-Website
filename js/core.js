@@ -9,7 +9,13 @@ window.HSK = {
     for (const ls of lv.lessons) {
       ls.level = lv.level;
       ls.id = `${lv.level}-${ls.n}`;
-      ls.words = ls.words.map(w => this.addWord(w, lv.level, ls.n));
+      ls.chars = ls.chars || { write: [] };
+      // skip words already taught (same characters and reading) at an earlier level
+      const taught = ([hz, py]) => [hz, `${hz}·${py}`].some(k => {
+        const d = this.dict.get(k);
+        return d && !d.extra && d.py === py && d.level < lv.level;
+      });
+      ls.words = ls.words.filter(w => !taught(w)).map(w => this.addWord(w, lv.level, ls.n));
     }
     (lv.extra || []).forEach(w => this.addWord(w, lv.level, 0, true));
   },
@@ -20,14 +26,14 @@ window.HSK = {
   },
 
   addWord([hz, py, en, emoji = ''], level, lesson, extra = false) {
-    const w = { hz, py, en, emoji, level, lesson, extra, id: hz };
     const prev = this.dict.get(hz);
-    if (!prev || (prev.extra && !extra)) this.dict.set(hz, w);
-    else if (prev.py !== py && !this.dict.has(`${hz}·${py}`)) {
-      // second reading of a character already taught (长 cháng / 长 zhǎng): own id so it gets its own review card
-      w.id = `${hz}·${py}`;
-      this.dict.set(w.id, w);
-    }
+    // A second reading of a character already taught as vocabulary (长 cháng / 长 zhǎng)
+    // is stored under "hz·py" so it gets its own review card. Otherwise vocabulary
+    // replaces glosses/extras under the plain key.
+    const key = prev && !prev.extra && prev.py !== py ? `${hz}·${py}` : hz;
+    const w = { hz, py, en, emoji, level, lesson, extra, id: key };
+    const cur = this.dict.get(key);
+    if (!cur || (cur.extra && !extra)) this.dict.set(key, w);
     return w;
   },
 };
@@ -43,8 +49,10 @@ window.HSK = {
   const NUM = { '〇': 'líng', '零': 'líng', '一': 'yī', '二': 'èr', '三': 'sān', '四': 'sì', '五': 'wǔ', '六': 'liù', '七': 'qī', '八': 'bā', '九': 'jiǔ', '十': 'shí', '百': 'bǎi', '千': 'qiān' };
   const MEASURES = new Set(['个', '本', '口', '块', '杯', '张', '些', '点', '点儿', '分', '分钟', '岁', '起', '年',
     '件', '次', '公斤', '小时', '米', '百', '千', '天', '下',
-    '课', '瓶', '双', '辆', '把', '条', '只', '张', '位', '段', '种', '层', '碗', '页', '刻', '万', '会儿']);
+    '课', '瓶', '双', '辆', '把', '条', '只', '张', '位', '段', '种', '层', '碗', '页', '刻', '万', '会儿',
+    '门', '名', '首', '篇', '份', '台', '场', '趟', '遍', '棵', '座', '片', '家', '朵', '倍', '周', '包', '节']);
   const NUM_RE = /^[〇零一二三四五六七八九十百千]+$/;
+  const DATE_WORDS = new Set(['号', '月', '日']);
 
   const P = HSK.py = {
     /** tone of one syllable: 1–4, or 5 for neutral */
@@ -96,12 +104,14 @@ window.HSK = {
     const w = HSK.dict.get(tok);
     if (w) return { ...w };
     if (NUM_RE.test(tok)) {
-      return { hz: tok, py: [...tok].map(c => NUM[c]).join(' '), en: numberMeaning(tok), number: true };
+      const syl = [...tok].map(c => NUM[c]);
+      if (tok[0] === '一' && /^[百千]/.test(tok[1] || '')) syl[0] = 'yì'; // 一百 yìbǎi, 一千 yìqiān
+      return { hz: tok, py: syl.join(' '), en: numberMeaning(tok), number: true };
     }
-    // fall back to splitting into known single characters
-    if (isHan(tok) && [...tok].every(c => HSK.dict.has(c) || NUM[c])) {
-      const py = [...tok].map(c => (HSK.dict.get(c) || { py: NUM[c] }).py).join(' ');
-      return { hz: tok, py, en: '' };
+    // fall back to splitting into single characters (own entry or reading taken from a word)
+    if (isHan(tok)) {
+      const parts = [...tok].map(c => HSK.dict.get(c) || (NUM[c] ? { py: NUM[c] } : HSK.charInfo(c)));
+      if (parts.every(p => p.py)) return { hz: tok, py: parts.map(p => p.py).join(' '), en: parts.length === 1 ? parts[0].en : '' };
     }
     return null;
   }
@@ -151,8 +161,10 @@ window.HSK = {
       const next = toks.slice(i + 1).find(x => !x.punct);
       const nextTone = next && next.py ? P.tone(P.syllables(next.py)[0]) : null;
       if (t.hz === '不' && nextTone === 4) t.py = 'bú';
-      if (t.hz === '一' && next && MEASURES.has(next.hz) && !toks[i - 1]?.number) {
-        t.py = nextTone === 4 ? 'yí' : 'yì';
+      // 一 changes tone before another syllable, except in dates / ordinals / counting
+      const prev = toks[i - 1];
+      if (t.hz === '一' && next && nextTone && !DATE_WORDS.has(next.hz) && !(prev && /^(星期|第)$/.test(prev.hz)) && !NUM_RE.test(next.hz) && !(prev && NUM_RE.test(prev.hz))) {
+        t.py = nextTone === 4 || nextTone === 5 && MEASURES.has(next.hz) ? 'yí' : 'yì';
       }
     });
     return toks;
@@ -164,7 +176,7 @@ window.HSK = {
 
   /** Sentence pinyin, capitalised, punctuation mapped to western forms. */
   HSK.sentencePinyin = function (sentence) {
-    const PUNCT = { '，': ',', '。': '.', '？': '?', '！': '!', '、': ',', '：': ':' };
+    const PUNCT = { '，': ',', '。': '.', '？': '?', '！': '!', '、': ',', '：': ':', '；': ';' };
     let out = '', glue = true; // glue: next word attaches without a leading space
     HSK.tokenize(sentence).forEach(t => {
       if (t.hz === '“') { out += (out ? ' ' : '') + '"'; glue = true; }
@@ -369,3 +381,21 @@ HSK.wordsUpTo = function (level, lessonN = Infinity) {
   return out;
 };
 HSK.lesson = (level, n) => HSK.levels[level]?.lessons.find(l => l.n === +n);
+
+/** Reading and meaning of a single character. Uses its own entry if there is one,
+ *  otherwise takes its syllable from a vocabulary word that contains it. */
+HSK.charInfo = function (c) {
+  const own = HSK.dict.get(c);
+  if (own) return own;
+  let best = null;
+  for (const w of HSK.dict.values()) {
+    const chars = [...w.hz], syl = HSK.py.syllables(w.py);
+    const i = chars.indexOf(c);
+    if (i < 0 || chars.length !== syl.length) continue;
+    const py = syl[i].toLowerCase();
+    const cand = { hz: c, py, en: `as in ${w.hz} (${w.en})`, derived: true };
+    if (!best || (HSK.py.tone(best.py) === 5 && HSK.py.tone(py) !== 5)) best = cand;
+    if (HSK.py.tone(py) !== 5 && !w.extra) break;
+  }
+  return best || { hz: c, py: '', en: '' };
+};

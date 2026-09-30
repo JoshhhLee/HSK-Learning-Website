@@ -235,7 +235,7 @@ const Views = (() => {
       <div class="lesson-head">
         <div style="flex:1;min-width:240px">
           <h1 class="zh" data-word-line>${esc(ls.zh)}</h1>
-          <div class="muted">${esc(HSK.sentencePinyin(tokenizeTitle(ls.zh)))}</div>
+          <div class="muted">${esc(HSK.sentencePinyin(ls.zhTok || tokenizeTitle(ls.zh)))}</div>
           <div><b>${esc(ls.en)}</b> · <span class="muted small">${esc(ls.focus)}</span></div>
         </div>
         <div class="row">
@@ -395,7 +395,7 @@ const Views = (() => {
       const box = $('#wbox', root); box.innerHTML = '';
       wr = await UI.writer(box, c, 260);
       wr && wr.animateCharacter();
-      const w = HSK.dict.get(c) || HSK.tokenize(c)[0] || {};
+      const w = HSK.charInfo(c);
       const words = HSK.wordsUpTo(9).filter(x => x.hz.includes(c) && x.hz !== c).slice(0, 6);
       $('#winfo', root).innerHTML = `<div class="row"><span class="han" style="font-size:2.2rem">${esc(c)}</span>
         <div><div class="py" style="font-weight:700">${w.py ? pyHTML(w.py) : ''}</div><div class="muted small">${esc(w.en || '')}</div></div>
