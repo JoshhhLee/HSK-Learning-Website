@@ -16,10 +16,10 @@ Chrome works too. Firefox has no speech recognition.
 | Part | What it does |
 |---|---|
 | Pinyin | Tones, sounds chart, spelling rules, listening drills (tones, similar sounds, tone pairs) |
-| Lessons | HSK 1, 15 lessons: Words · Dialogue · Grammar · Writing · Practice · Speaking |
+| Lessons | HSK 1 and HSK 2, 15 lessons each: Words · Dialogue · Grammar · Writing · Practice · Speaking |
 | Review | Spaced-repetition flashcards (read / listen / recall) |
-| Writing | Stroke-order animation and tracing for every HSK 1 character, plus the basic strokes |
-| Test | HSK 1-style practice test (listening + reading) |
+| Writing | Stroke-order animation and tracing for every character, per level, plus the basic strokes |
+| Test | HSK-style practice test per level (listening + reading) |
 
 ## Files
 
@@ -31,6 +31,7 @@ js/ui.js            shared widgets: sentences, popover, writer, quiz, mic
 js/views.js         pages
 js/app.js           router
 js/data/hsk1.js     HSK 1 lessons (words, dialogues, grammar, characters)
+js/data/hsk2.js     HSK 2 lessons
 js/data/chars.js    single-character readings
 js/data/pinyin.js   pinyin & stroke reference data
 ```
@@ -40,6 +41,8 @@ js/data/pinyin.js   pinyin & stroke reference data
 Create `js/data/hsk2.js` calling `HSK.registerLevel({ level: 2, ... })` with the same shape as `hsk1.js`,
 then add a `<script>` tag for it in `index.html`. Sentences are written with spaces between words
 (`我 是 学生 。`). The app then generates pinyin, tap-to-translate and quizzes automatically.
+To force a reading, write it in braces: `长{zhǎng}`, `看过{guo}`, `是不是{shì bu shì}`.
+Single characters that only appear inside words need a gloss in `js/data/chars.js`.
 
 ## Online services used
 

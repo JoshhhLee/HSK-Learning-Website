@@ -21,7 +21,13 @@ window.HSK = {
 
   addWord([hz, py, en, emoji = ''], level, lesson, extra = false) {
     const w = { hz, py, en, emoji, level, lesson, extra, id: hz };
-    if (!this.dict.has(hz) || (this.dict.get(hz).extra && !extra)) this.dict.set(hz, w);
+    const prev = this.dict.get(hz);
+    if (!prev || (prev.extra && !extra)) this.dict.set(hz, w);
+    else if (prev.py !== py && !this.dict.has(`${hz}·${py}`)) {
+      // second reading of a character already taught (长 cháng / 长 zhǎng): own id so it gets its own review card
+      w.id = `${hz}·${py}`;
+      this.dict.set(w.id, w);
+    }
     return w;
   },
 };
@@ -34,9 +40,10 @@ window.HSK = {
   const REV = {};
   for (const [base, s] of Object.entries(MARKS)) [...s].forEach((c, i) => { REV[c] = [base, i + 1]; });
 
-  const NUM = { '〇': 'líng', '零': 'líng', '一': 'yī', '二': 'èr', '三': 'sān', '四': 'sì', '五': 'wǔ', '六': 'liù', '七': 'qī', '八': 'bā', '九': 'jiǔ', '十': 'shí', '百': 'bǎi' };
-  const MEASURES = new Set(['个', '本', '口', '块', '杯', '张', '些', '点', '点儿', '分', '分钟', '岁', '起', '年']);
-  const NUM_RE = /^[〇零一二三四五六七八九十百]+$/;
+  const NUM = { '〇': 'líng', '零': 'líng', '一': 'yī', '二': 'èr', '三': 'sān', '四': 'sì', '五': 'wǔ', '六': 'liù', '七': 'qī', '八': 'bā', '九': 'jiǔ', '十': 'shí', '百': 'bǎi', '千': 'qiān' };
+  const MEASURES = new Set(['个', '本', '口', '块', '杯', '张', '些', '点', '点儿', '分', '分钟', '岁', '起', '年',
+    '件', '次', '公斤', '小时', '米', '百', '千', '天', '下']);
+  const NUM_RE = /^[〇零一二三四五六七八九十百千]+$/;
 
   const P = HSK.py = {
     /** tone of one syllable: 1–4, or 5 for neutral */
@@ -114,14 +121,25 @@ window.HSK = {
       if (c in D) cur = D[c];
       else if (c === '十') { total += (cur || 1) * 10; cur = 0; }
       else if (c === '百') { total += (cur || 1) * 100; cur = 0; }
+      else if (c === '千') { total += (cur || 1) * 1000; cur = 0; }
     }
     return total + cur;
   };
 
   /** Split a spaced sentence into token objects with context-aware pinyin. */
+  /** Split a spaced sentence into raw tokens, keeping 是不是{shì bu shì} whole. */
+  HSK.splitTokens = s => s.trim().match(/[^\s{]+\{[^}]*\}|\S+/g) || [];
+
   HSK.tokenize = function (sentence) {
-    const raw = sentence.trim().split(/\s+/);
+    const raw = HSK.splitTokens(sentence);
     const toks = raw.map(t => {
+      // reading override: 长{zhǎng}, 看看{kàn kan}
+      const ov = t.match(/^(.+)\{(.+)\}$/);
+      if (ov) {
+        const [, hz, py] = ov;
+        const w = HSK.dict.get(`${hz}·${py}`) || lookup(hz) || { hz, en: '' };
+        return { ...w, hz, py };
+      }
       if (!isHan(t)) return { hz: t, punct: true };
       const w = lookup(t);
       if (!w) { console.warn('[HSK] unknown word:', t, 'in', sentence); return { hz: t, py: '', en: '?' }; }
@@ -139,7 +157,9 @@ window.HSK = {
     return toks;
   };
 
-  HSK.plain = sentence => sentence.replace(/\s+/g, '');
+  /** Word text of a token with any {reading} override removed. */
+  HSK.tokText = t => t.replace(/\{[^}]*\}/g, '');
+  HSK.plain = sentence => HSK.tokText(sentence).replace(/\s+/g, '');
 
   /** Sentence pinyin, capitalised, punctuation mapped to western forms. */
   HSK.sentencePinyin = function (sentence) {
@@ -151,7 +171,7 @@ window.HSK = {
       else if (t.punct) { out += PUNCT[t.hz] || t.hz; glue = false; }
       else { out += (glue ? '' : ' ') + P.word(t.py); glue = false; }
     });
-    return out.trim().replace(/(^|[.?!]\s+"?)([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ])/g, (m, a, b) => a + b.toUpperCase());
+    return out.trim().replace(/(^|[.?!]\s+"?|:\s*")([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ])/g, (m, a, b) => a + b.toUpperCase());
   };
 
   HSK.isHan = isHan;

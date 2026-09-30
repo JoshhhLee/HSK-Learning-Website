@@ -54,11 +54,12 @@ const UI = (() => {
   function closePop() { if (pop) { pop.remove(); pop = null; } }
   function openPop(anchor, hz, pyOverride) {
     closePop();
-    const w = HSK.dict.get(hz) || HSK.tokenize(hz)[0] || { hz, py: '', en: '' };
+    const w = HSK.dict.get(`${hz}·${pyOverride}`) || HSK.dict.get(hz) || HSK.tokenize(hz)[0] || { hz, py: '', en: '' };
     const py = pyOverride || w.py;
     pop = document.createElement('div');
     pop.className = 'pop';
-    const inDeck = HSK.srs.has(hz);
+    const cardId = w.id || hz;
+    const inDeck = HSK.srs.has(cardId);
     pop.innerHTML = `
       <div class="row"><div class="hz">${hzHTML(w.hz, py)}</div><span class="spacer"></span>${sayBtn(w.hz)}</div>
       <div class="py">${py ? pyHTML(py) : ''}</div>
@@ -82,7 +83,7 @@ const UI = (() => {
       });
     };
     const add = $('[data-pop-add]', pop);
-    if (add) add.onclick = () => { HSK.srs.add([hz]); add.textContent = '✓ In review'; add.disabled = true; App.refreshBadge(); };
+    if (add) add.onclick = () => { HSK.srs.add([cardId]); add.textContent = '✓ In review'; add.disabled = true; App.refreshBadge(); };
   }
 
   document.addEventListener('click', e => {

@@ -9,16 +9,23 @@ const App = {
     App.keyHandler = null;
     HSK.tts.stop();
     HSK.asr.stop();
+    // remember the level being studied so the nav links open it
+    const st = HSK.store.state.settings;
+    if (['level', 'lesson', 'write', 'test'].includes(name) && HSK.levels[+a]) { st.level = +a; HSK.store.save(); }
+    const lv = HSK.levels[st.level] ? st.level : 1;
     const views = {
       home: () => Views.home(view),
-      level: () => Views.level(view, +(a || 1)),
+      level: () => Views.level(view, +(a || lv)),
       lesson: () => Views.lesson(view, +a, +b, c),
       review: () => Views.review(view),
-      write: () => Views.write(view),
+      write: () => Views.write(view, +(a || lv)),
       pinyin: () => Views.pinyin(view, a),
-      test: () => Views.test(view, +(a || 1)),
+      test: () => Views.test(view, +(a || lv)),
       settings: () => Views.settings(view),
     };
+    document.querySelectorAll('#nav a').forEach(x => {
+      if (['level', 'write', 'test'].includes(x.dataset.r)) x.setAttribute('href', `#/${x.dataset.r}/${lv}`);
+    });
     (views[name] || views.home)();
     const navKey = name === 'lesson' ? 'level' : name;
     document.querySelectorAll('#nav a').forEach(x => x.classList.toggle('on', x.dataset.r === navKey));

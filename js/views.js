@@ -90,13 +90,14 @@ const Views = (() => {
         explain: `<div style="margin-top:8px">${sentence(line[1])}</div>`, review: `🔊 <span class="han">${HSK.plain(line[1])}</span> · ${esc(line[2])}` };
     },
     build(s, en) {
-      const tokens = s.split(/\s+/).filter(t => HSK.isHan(t));
+      const tokens = HSK.splitTokens(s).filter(t => HSK.isHan(t)).map(HSK.tokText);
       return { kind: 'build', q: `Build the sentence: <b>“${esc(en)}”</b>`, tokens,
         explain: `<div style="margin-top:8px">${sentence(s)}</div>`, review: `<span class="han">${HSK.plain(s)}</span> · ${esc(en)}` };
     },
     fill(s, en, known) {
-      const toks = s.split(/\s+/);
-      const idx = toks.map((t, i) => (known.has(t) ? i : -1)).filter(i => i >= 0);
+      const raw = HSK.splitTokens(s);
+      const toks = raw.map(HSK.tokText);
+      const idx = raw.map((t, i) => (known.has(t) ? i : -1)).filter(i => i >= 0);
       if (!idx.length) return null;
       const k = idx[Math.random() * idx.length | 0];
       const w = HSK.dict.get(toks[k]);
@@ -119,7 +120,7 @@ const Views = (() => {
     const pool = HSK.wordsUpTo(ls.level, ls.n).filter(w => w.en);
     const words = ls.words.filter(w => !/\(a name\)|surname/.test(w.en));
     const sents = lessonSentences(ls);
-    const buildable = sents.filter(s => { const n = s[1].split(/\s+/).filter(HSK.isHan).length; return n >= 3 && n <= 8; });
+    const buildable = sents.filter(s => { const n = HSK.splitTokens(s[1]).filter(HSK.isHan).length; return n >= 3 && n <= 8; });
     const known = new Set(pool.map(w => w.hz));
     const qs = [];
     HSK.util.sample(words, 3).forEach(w => qs.push(Q.meaning(w, pool)));
@@ -140,8 +141,8 @@ const Views = (() => {
     const cards = Object.keys(S().cards).length;
     const due = HSK.srs.due().length;
     const streak = HSK.store.streak();
-    const lv = HSK.levels[1];
-    const next = lv.lessons.find(l => lessonProgress(l) < 1) || lv.lessons[0];
+    const allLessons = Object.values(HSK.levels).flatMap(l => l.lessons);
+    const next = allLessons.find(l => lessonProgress(l) < 1) || allLessons[0];
     el.innerHTML = `
       <div class="hero">
         <div class="card welcome">
@@ -149,7 +150,7 @@ const Views = (() => {
           <h1>你好！Ready to study?</h1>
           <p>Work through each lesson in four skills: <b>read</b> the words and dialogues, <b>listen</b> to native-style audio, <b>speak</b> into the mic for instant feedback, and <b>write</b> characters stroke by stroke.</p>
           <div class="row">
-            <a class="btn" style="background:#fff;color:#8e2a20;border-color:#fff" href="#/lesson/1/${next.n}">Continue: Lesson ${next.n} →</a>
+            <a class="btn" style="background:#fff;color:#8e2a20;border-color:#fff" href="#/lesson/${next.level}/${next.n}">Continue: HSK ${next.level} · Lesson ${next.n} →</a>
             ${due ? `<a class="btn" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)" href="#/review">Review ${due} due</a>` : ''}
           </div>
         </div>
@@ -195,12 +196,18 @@ const Views = (() => {
     <b>No Chinese voice found in this browser.</b> Audio won't play until you add one. Use <b>Microsoft Edge</b> (it includes natural online Chinese voices),
     or in Windows go to <i>Settings → Time &amp; language → Language → Add a language → 中文(中华人民共和国)</i> and tick <i>Speech</i>. Then reload this page.</div>`;
 
+  /** Tabs for switching level on pages that exist per level. */
+  const levelTabs = (base, cur, sub = '') => `<div class="tabs">${[1, 2, 3, 4, 5, 6].map(n => HSK.levels[n]
+    ? `<a href="#/${base}/${n}${sub}" class="${n === +cur ? 'on' : ''}">HSK ${n}</a>`
+    : `<a class="muted" style="opacity:.45;pointer-events:none">HSK ${n}</a>`).join('')}</div>`;
+
   /* ================= Level (lesson list) ================= */
   function level(el, n) {
     const L = HSK.levels[n];
-    if (!L) { el.innerHTML = `<div class="empty"><div class="big">🚧</div><h2>HSK ${n} is coming next</h2><p>Finish HSK 1 first, and this level will be added from the book.</p></div>`; return; }
+    if (!L) { el.innerHTML = `${levelTabs('level', n)}<div class="empty"><div class="big">🚧</div><h2>HSK ${n} is coming next</h2><p>This level will be added from the book.</p></div>`; return; }
     el.innerHTML = `
       <div class="crumbs"><a href="#/">Home</a> / ${L.title}</div>
+      ${levelTabs('level', n)}
       <h1>${L.title} <span class="muted" style="font-weight:500;font-size:1rem">· ${L.subtitle}</span></h1>
       <p class="muted">${L.lessons.length} lessons following the order of <i>${esc(L.book)}</i>. Start with <a href="#/pinyin">Pinyin &amp; tones</a> if you're brand new.</p>
       <div class="stack section">
@@ -258,7 +265,7 @@ const Views = (() => {
   }
 
   function lessonWords(t, ls) {
-    const ids = ls.words.map(w => w.hz);
+    const ids = ls.words.filter(w => !/name\)$/.test(w.en)).map(w => w.id); // names aren't worth flashcards
     const inDeck = ids.filter(id => HSK.srs.has(id)).length;
     t.innerHTML = `
       <div class="row" style="margin-bottom:14px">
@@ -384,7 +391,7 @@ const Views = (() => {
       wr = await UI.writer(box, c, 260);
       wr && wr.animateCharacter();
       const w = HSK.dict.get(c) || HSK.tokenize(c)[0] || {};
-      const words = HSK.wordsUpTo(1).filter(x => x.hz.includes(c) && x.hz !== c).slice(0, 6);
+      const words = HSK.wordsUpTo(9).filter(x => x.hz.includes(c) && x.hz !== c).slice(0, 6);
       $('#winfo', root).innerHTML = `<div class="row"><span class="han" style="font-size:2.2rem">${esc(c)}</span>
         <div><div class="py" style="font-weight:700">${w.py ? pyHTML(w.py) : ''}</div><div class="muted small">${esc(w.en || '')}</div></div>
         <span class="spacer"></span>${sayBtn(c)}</div>
@@ -599,14 +606,16 @@ const Views = (() => {
   }
 
   /* ================= Writing page ================= */
-  function write(el) {
-    const L = HSK.levels[1];
+  function write(el, lvN = 1) {
+    const L = HSK.levels[lvN] || HSK.levels[1]; lvN = L.level;
     const req = L.lessons.flatMap(l => l.chars.write);
-    const all = HSK.util.hanChars(req.join('') + HSK.wordsUpTo(1).filter(w => !/name|surname/.test(w.en)).map(w => w.hz).join(''));
+    const earlier = new Set(HSK.util.hanChars(HSK.wordsUpTo(lvN - 1).map(w => w.hz).join('') + (HSK.levels[lvN - 1]?.lessons.flatMap(l => l.chars.write).join('') || '')));
+    const all = HSK.util.hanChars(req.join('') + L.lessons.flatMap(l => l.words).filter(w => !/name|surname/.test(w.en)).map(w => w.hz).join(''))
+      .filter(c => !earlier.has(c) || req.includes(c));
     const ordered = [...new Set([...req, ...all])];
     const written = new Set(S().written || []);
-    el.innerHTML = `<h1>Writing</h1>
-      <p class="muted">${written.size} of ${ordered.length} HSK 1 characters traced. Pick a character, watch the stroke order, then press <b>Trace it</b> and draw with your mouse, finger or pen.</p>
+    el.innerHTML = `<h1>Writing</h1>${levelTabs('write', lvN)}
+      <p class="muted">${ordered.filter(c => written.has(c)).length} of ${ordered.length} new ${L.title} characters traced. Pick a character, watch the stroke order, then press <b>Trace it</b> and draw with your mouse, finger or pen.</p>
       <div class="card" id="pad"></div>
       <div class="card section">
         <h2>The basic strokes</h2>
@@ -693,8 +702,8 @@ const Views = (() => {
     const L = HSK.levels[lvN];
     if (!L) { el.innerHTML = `<div class="empty"><h2>HSK ${lvN} test coming soon</h2></div>`; return; }
     const hist = S().tests.filter(t => t.level === +lvN).slice(-5).reverse();
-    el.innerHTML = `<h1>${L.title} practice test</h1>
-      <p class="muted">Modelled on the real HSK 1 exam, which has <b>listening</b> and <b>reading</b> only. It uses 30 questions from all 15 lessons. The real exam scores out of 200 and you pass with 120 (60%).</p>
+    el.innerHTML = `<h1>${L.title} practice test</h1>${levelTabs('test', lvN)}
+      <p class="muted">Modelled on the real ${L.title} exam, which has <b>listening</b> and <b>reading</b> only. It uses 30 questions from all ${L.lessons.length} lessons${lvN > 1 ? ' (plus words from earlier levels)' : ''}. The real exam scores out of 200 and you pass with 120 (60%).</p>
       <div class="grid g2">
         <div class="card"><h3>Sections</h3><ul class="muted" style="margin:0;padding-left:18px">
           <li>Listening 1: hear a word, pick the picture (5)</li><li>Listening 2: hear a word, pick the characters (5)</li>
