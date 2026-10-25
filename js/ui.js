@@ -22,7 +22,7 @@ const UI = (() => {
   }
 
   const sayBtn = (text, title = 'Listen') =>
-    `<button class="icon-btn" data-say="${esc(HSK.plain(text))}" title="${title}" aria-label="${title}">▶</button>`;
+    `<button class="icon-btn" data-say="${esc(text)}" title="${title}" aria-label="${title}">▶</button>`;
 
   /** Sentence with pinyin above each word; words are tappable. */
   function sentence(s, { marks } = {}) {
@@ -75,7 +75,7 @@ const UI = (() => {
     const cardId = w.id || hz;
     const inDeck = HSK.srs.has(cardId);
     pop.innerHTML = `
-      <div class="row"><div class="hz">${hzHTML(w.hz, py)}</div><span class="spacer"></span>${sayBtn(w.hz)}</div>
+      <div class="row"><div class="hz">${hzHTML(w.hz, py)}</div><span class="spacer"></span>${sayBtn(HSK.withPy(w.hz, py))}</div>
       <div class="py">${py ? pyHTML(py) : ''}</div>
       <div class="en">${esc(w.en || '')}${w.level && !w.extra ? ` <span class="pill">HSK ${w.level}${w.lesson ? ' · L' + w.lesson : ''}</span>` : ''}</div>
       <div class="row">
@@ -88,7 +88,7 @@ const UI = (() => {
     const left = Math.min(Math.max(8, r.left + r.width / 2 - 125), innerWidth - 258);
     const top = r.bottom + 8 + 260 > innerHeight ? Math.max(8, r.top - pop.offsetHeight - 8) : r.bottom + 8;
     pop.style.left = left + 'px'; pop.style.top = top + 'px';
-    HSK.tts.speak(w.hz);
+    HSK.tts.speak(HSK.withPy(w.hz, py));
     $('[data-pop-strokes]', pop).onclick = () => {
       const box = $('.pop-writers', pop); box.innerHTML = '';
       HSK.util.hanChars(w.hz).forEach(c => {
@@ -197,7 +197,7 @@ const UI = (() => {
           const ok = got === answer.join('');
           e.target.disabled = true; $('[data-clear]', body).disabled = true;
           $$('.chip', body).forEach(c => (c.disabled = true));
-          HSK.tts.speak(answer.join(''));
+          HSK.tts.speak(Q.after || answer.join(''));
           next(ok);
         };
       } else {
@@ -325,7 +325,7 @@ const UI = (() => {
 
       function toggle(t) {
         if (answer.includes(t.id)) answer = answer.filter(x => x !== t.id);
-        else { answer.push(t.id); HSK.tts.speak(t.hz); }
+        else { answer.push(t.id); HSK.tts.speak(HSK.withPy(t.hz, t.py)); }
         layout();
       }
 
@@ -365,7 +365,7 @@ const UI = (() => {
               if (e.clientY < r.top || (e.clientY <= r.bottom && e.clientX < r.left + r.width / 2)) { at = k; break; }
             }
             answer.splice(at, 0, t.id);
-            if (!was) HSK.tts.speak(t.hz);
+            if (!was) HSK.tts.speak(HSK.withPy(t.hz, t.py));
           }
           layout();
         };

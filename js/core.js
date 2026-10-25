@@ -263,6 +263,32 @@ HSK.srs = {
   },
 };
 
+/* ---------- What the voice is given ----------
+ * Speech engines only see characters, so a character with two readings is read with its usual one:
+ * 长 alone becomes cháng even on the zhǎng (to grow) card. For these one-character words we send a
+ * same-sound character with only one reading instead (the screen still shows the real one).
+ * No single-reading stand-in exists for 得 děi, 了 liǎo or 着 zháo; context usually gets those right. */
+const SPEAK_AS = {
+  '长|zhǎng': '掌', '涨|zhǎng': '掌', '还|huán': '环', '为|wéi': '围', '教|jiāo': '交', '种|zhòng': '众',
+  '背|bēi': '杯', '系|jì': '记', '钉|dìng': '定', '倒|dào': '到', '干|gàn': '赣', '差|chà': '岔',
+  '只|zhǐ': '纸', '只|zhī': '支', '弹|tán': '谈', '吓|xià': '下',
+  '挣|zhèng': '证', '冲|chōng': '充', '占|zhàn': '站', '恶|è': '饿',
+};
+// 的 has readings of its own (的确 dí), so it only stands in for a particle said on its own;
+// inside a sentence the voice reads 跑得快 / 认真地 correctly anyway.
+const SPEAK_ALONE = { '得|de': '的', '地|de': '的' };
+
+/** Write a word with its reading so speech and display both use it: 长 + zhǎng -> 长{zhǎng}. */
+HSK.withPy = (hz, py) => (py ? `${hz}{${py}}` : hz);
+
+/** Spaced text (with any {reading} overrides) -> the characters to hand to the speech engine. */
+HSK.speechText = function (text) {
+  if (!/[\s{]/.test(text.trim())) return text; // plain text: no readings to go by
+  const toks = HSK.tokenize(text);
+  const table = toks.length === 1 ? { ...SPEAK_AS, ...SPEAK_ALONE } : SPEAK_AS;
+  return toks.map(t => (!t.punct && table[`${t.hz}|${t.py}`]) || t.hz).join('');
+};
+
 /* ---------- Speech: text-to-speech ---------- */
 HSK.tts = (() => {
   const synth = window.speechSynthesis;
@@ -288,7 +314,7 @@ HSK.tts = (() => {
     speak(text, { rate, onend } = {}) {
       if (!synth) return;
       synth.cancel();
-      const u = new SpeechSynthesisUtterance(HSK.plain(text));
+      const u = new SpeechSynthesisUtterance(HSK.speechText(text));
       u.lang = 'zh-CN';
       const v = pick(); if (v) u.voice = v;
       u.rate = rate ?? HSK.store.state.settings.rate;

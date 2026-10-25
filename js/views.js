@@ -31,19 +31,19 @@ const Views = (() => {
     },
     meaning(w, pool) {
       const opts = HSK.util.shuffle([w, ...Q.pool(w, pool)]);
-      return { q: 'What does this mean?', prompt: `<div class="hz">${esc(w.hz)}</div>`, after: w.hz,
+      return { q: 'What does this mean?', prompt: `<div class="hz">${esc(w.hz)}</div>`, after: HSK.withPy(w.hz, w.py),
         options: opts.map(o => ({ html: esc(o.en), value: o.hz })), answer: w.hz,
         explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} = ${esc(w.en)}`, review: `<span class="han">${w.hz}</span> ${pyHTML(w.py)} · ${esc(w.en)}` };
     },
     hanzi(w, pool) {
       const opts = HSK.util.shuffle([w, ...Q.pool(w, pool, 3, 'hz')]);
-      return { q: `Which one means <b>“${esc(w.en)}”</b>?`, after: w.hz,
+      return { q: `Which one means <b>“${esc(w.en)}”</b>?`, after: HSK.withPy(w.hz, w.py),
         options: opts.map(o => ({ html: `<span class="hz">${esc(o.hz)}</span>`, value: o.hz })), answer: w.hz,
         explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)}`, review: `<span class="han">${w.hz}</span> ${pyHTML(w.py)} · ${esc(w.en)}` };
     },
     listen(w, pool) {
       const opts = HSK.util.shuffle([w, ...Q.pool(w, pool, 3, 'hz')]);
-      return { q: 'Listen. Which word did you hear?', say: w.hz,
+      return { q: 'Listen. Which word did you hear?', say: HSK.withPy(w.hz, w.py),
         options: opts.map(o => ({ html: `<span class="hz">${esc(o.hz)}</span>`, value: o.hz })), answer: w.hz,
         explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `🔊 <span class="han">${w.hz}</span> ${pyHTML(w.py)}` };
     },
@@ -55,7 +55,7 @@ const Views = (() => {
         if (others.length === 3) break;
       }
       const opts = HSK.util.shuffle([w, ...others]);
-      return { q: 'Listen and pick the picture.', say: w.hz, pics: true,
+      return { q: 'Listen and pick the picture.', say: HSK.withPy(w.hz, w.py), pics: true,
         options: opts.map(o => ({ html: o.emoji, value: o.hz })), answer: w.hz,
         explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `🔊 <span class="han">${w.hz}</span> ${w.emoji} ${esc(w.en)}` };
     },
@@ -72,7 +72,7 @@ const Views = (() => {
         const v = HSK.py.word(s.join(' '));
         if (!seen.has(v)) { seen.add(v); opts.push(v); }
       }
-      return { q: 'Listen. Which pinyin has the right tones?', prompt: `<div class="hz">${esc(w.hz)}</div>`, say: w.hz,
+      return { q: 'Listen. Which pinyin has the right tones?', prompt: `<div class="hz">${esc(w.hz)}</div>`, say: HSK.withPy(w.hz, w.py),
         options: HSK.util.shuffle(opts).map(o => ({ html: `<b style="font-size:1.2rem">${esc(o)}</b>`, value: o })), answer: right,
         explain: `${pyHTML(w.py)} · tones ${HSK.py.tones(w.py).map(t => t === 5 ? '0' : t).join('-')}`, review: `<span class="han">${w.hz}</span> ${pyHTML(w.py)}` };
     },
@@ -85,13 +85,13 @@ const Views = (() => {
         if (others.length === 3) break;
       }
       const opts = HSK.util.shuffle([line, ...others]);
-      return { q: 'Listen to the sentence. What does it mean?', say: HSK.plain(line[1]),
+      return { q: 'Listen to the sentence. What does it mean?', say: line[1],
         options: opts.map(o => ({ html: esc(o[2]), value: o[1] })), answer: line[1],
         explain: `<div style="margin-top:8px">${sentence(line[1])}</div>`, review: `🔊 <span class="han">${HSK.plain(line[1])}</span> · ${esc(line[2])}` };
     },
     build(s, en) {
       const tokens = HSK.splitTokens(s).filter(t => HSK.isHan(t)).map(HSK.tokText);
-      return { kind: 'build', q: `Build the sentence: <b>“${esc(en)}”</b>`, tokens,
+      return { kind: 'build', q: `Build the sentence: <b>“${esc(en)}”</b>`, tokens, after: s,
         explain: `<div style="margin-top:8px">${sentence(s)}</div>`, review: `<span class="han">${HSK.plain(s)}</span> · ${esc(en)}` };
     },
     fill(s, en, known) {
@@ -106,7 +106,7 @@ const Views = (() => {
       const shown = toks.map((t, i) => (i === k ? '<u>&nbsp;＿＿&nbsp;</u>' : esc(t))).join('');
       return { q: `Fill in the blank. <span class="muted small">(${esc(en)})</span>`, prompt: `<div class="han" style="font-size:1.8rem">${shown}</div>`,
         options: opts.map(o => ({ html: `<span class="hz">${esc(o.hz)}</span> <span class="muted small">${esc(HSK.py.word(o.py))}</span>`, value: o.hz })),
-        answer: w.hz, after: HSK.plain(s),
+        answer: w.hz, after: s,
         explain: `<div style="margin-top:8px">${sentence(s)}</div>`, review: `<span class="han">${HSK.plain(s)}</span> · ${esc(en)}` };
     },
   };
@@ -340,9 +340,9 @@ const Views = (() => {
       </div>
       <div class="grid g2" id="wordgrid">
         ${ls.words.map(w => `<div class="card word">
-          <div class="hz" data-word="${esc(w.hz)}">${hzHTML(w.hz, w.py)}</div>
+          <div class="hz" data-word="${esc(w.hz)}" data-py="${esc(w.py)}">${hzHTML(w.hz, w.py)}</div>
           <div><div class="py">${pyHTML(w.py)}</div><div class="en">${esc(w.en)}</div></div>
-          <div class="actions"><span class="emo">${w.emoji && w.emoji.length < 8 ? w.emoji : ''}</span>${sayBtn(w.hz)}</div>
+          <div class="actions"><span class="emo">${w.emoji && w.emoji.length < 8 ? w.emoji : ''}</span>${sayBtn(HSK.withPy(w.hz, w.py))}</div>
         </div>`).join('')}
       </div>
       ${ls.pinyinLink ? `<div class="notice info section">This lesson is mostly about pronunciation. Spend time on the <a href="#/pinyin">Pinyin &amp; tones</a> page: learn the tones, the sounds chart and the listening drills.</div>` : ''}`;
@@ -357,7 +357,7 @@ const Views = (() => {
       for (const w of ls.words) {
         const card = $$('.word', t).find(c => c.querySelector('[data-word]').dataset.word === w.hz);
         card && (card.style.borderColor = 'var(--accent)');
-        await HSK.tts.say(w.hz); await wait(500);
+        await HSK.tts.say(HSK.withPy(w.hz, w.py)); await wait(500);
         card && (card.style.borderColor = '');
         if (!document.body.contains(btn)) return;
       }
@@ -463,7 +463,7 @@ const Views = (() => {
       const words = HSK.wordsUpTo(9).filter(x => x.hz.includes(c) && x.hz !== c).slice(0, 6);
       $('#winfo', root).innerHTML = `<div class="row"><span class="han" style="font-size:2.2rem">${esc(c)}</span>
         <div><div class="py" style="font-weight:700">${w.py ? pyHTML(w.py) : ''}</div><div class="muted small">${esc(w.en || '')}</div></div>
-        <span class="spacer"></span>${sayBtn(c)}</div>
+        <span class="spacer"></span>${sayBtn(HSK.withPy(c, w.py))}</div>
         ${words.length ? `<div class="small muted" style="margin-top:6px">In words: ${words.map(x => `<span class="han tok w" data-word="${esc(x.hz)}" style="display:inline;font-size:1rem">${esc(x.hz)}</span>`).join(' · ')}</div>` : ''}`;
     };
     $('#cgrid', root).onclick = e => { const c = e.target.closest('[data-c]'); c && select(c.dataset.c); };
@@ -573,7 +573,7 @@ const Views = (() => {
       </div>
       <div class="grid g2">
         <div class="card"><h3>Words</h3><p class="small muted">▶ listen, then 🎤 say it. Green characters were recognised.</p>
-          ${ls.words.map(w => UI.speakRow(w.hz, `${HSK.py.word(w.py)} · ${w.en}`)).join('')}</div>
+          ${ls.words.map(w => UI.speakRow(HSK.withPy(w.hz, w.py), `${HSK.py.word(w.py)} · ${w.en}`)).join('')}</div>
         <div class="card"><h3>Sentences</h3><p class="small muted">Get 5 items to 70%+ to complete this part.</p>
           ${lines.map(l => UI.speakRow(l[1], l[2])).join('')}</div>
       </div>`;
@@ -650,19 +650,20 @@ const Views = (() => {
       const id = queue[i], w = HSK.dict.get(id);
       const m = mode === 'mix' ? ['read', 'listen', 'recall'][Math.random() * 3 | 0] : mode;
       const front = m === 'read' ? `<div class="hz">${esc(w.hz)}</div>`
-        : m === 'listen' ? `<div style="font-size:3rem">🔊</div><button class="btn" data-say="${esc(w.hz)}">Play again</button>`
+        : m === 'listen' ? `<div style="font-size:3rem">🔊</div><button class="btn" data-say="${esc(HSK.withPy(w.hz, w.py))}">Play again</button>`
         : `<div style="font-size:1.6rem;font-weight:600">${esc(w.en)}</div><div class="muted small">Say or write the Chinese</div>`;
       box.innerHTML = `<div class="quiz">
         <div class="progress-top"><span class="small muted">${i + 1} / ${queue.length}</span><div class="bar"><i style="width:${i / queue.length * 100}%"></i></div></div>
         <div class="card flash" data-flip>${front}<div class="hint">Tap or press Space to reveal</div></div>
         <div id="grades"></div></div>`;
-      if (m !== 'read') HSK.tts.speak(w.hz);
-      if (m === 'listen') setTimeout(() => HSK.tts.speak(w.hz), 10);
+      const sayW = HSK.withPy(w.hz, w.py);
+      if (m !== 'read') HSK.tts.speak(sayW);
+      if (m === 'listen') setTimeout(() => HSK.tts.speak(sayW), 10);
       const flip = () => {
         $('[data-flip]', box).innerHTML = `<div class="hz">${hzHTML(w.hz, w.py)}</div><div class="py">${pyHTML(w.py)}</div>
-          <div class="en">${esc(w.en)}</div><div>${sayBtn(w.hz)}</div><div class="hint">HSK ${w.level} · Lesson ${w.lesson}</div>`;
+          <div class="en">${esc(w.en)}</div><div>${sayBtn(sayW)}</div><div class="hint">HSK ${w.level} · Lesson ${w.lesson}</div>`;
         $('[data-flip]', box).onclick = null;
-        if (m === 'read') HSK.tts.speak(w.hz);
+        if (m === 'read') HSK.tts.speak(sayW);
         const c = HSK.srs.card(id);
         const est = g => (g === 0 ? '1 min' : fmtIvl(g, c));
         $('#grades', box).innerHTML = `<div class="grades">
@@ -742,11 +743,11 @@ const Views = (() => {
         <h2 class="section">Hear the difference</h2>
         <p class="muted small">Each row is the same syllable in four tones. Click a character to hear it, or play the whole row.</p>
         <div class="stack">${P.quartets.map((q, i) => `<div class="card" style="padding:12px"><div class="row" style="margin-bottom:8px"><b>${HSK.py.strip(q[0][1])}</b><span class="spacer"></span><button class="btn sm" data-q="${i}">▶ Play row</button></div>
-          <div class="quartet">${q.map(([hz, py, en]) => `<button data-say="${hz}"><span class="hz">${hz}</span><b class="t${HSK.py.tone(py)}">${py}</b><div class="small muted">${en}</div></button>`).join('')}</div></div>`).join('')}</div>`;
-      $$('[data-q]', t).forEach(b => b.onclick = async () => { for (const [hz] of P.quartets[+b.dataset.q]) { await HSK.tts.say(hz, { rate: 0.7 }); await wait(300); } });
+          <div class="quartet">${q.map(([hz, py, en]) => `<button data-say="${HSK.withPy(hz, py)}"><span class="hz">${hz}</span><b class="t${HSK.py.tone(py)}">${py}</b><div class="small muted">${en}</div></button>`).join('')}</div></div>`).join('')}</div>`;
+      $$('[data-q]', t).forEach(b => b.onclick = async () => { for (const [hz, py] of P.quartets[+b.dataset.q]) { await HSK.tts.say(HSK.withPy(hz, py), { rate: 0.7 }); await wait(300); } });
     } else if (tab === 'sounds') {
       const block = (title, groups) => `<h2 class="section">${title}</h2>${groups.map(g => `<h3 class="muted" style="margin-top:14px">${g.group}</h3>
-        <div class="py-grid">${g.items.map(([s, hz, py, tip]) => `<button class="py-cell" data-say="${hz}"><b>${s}</b><span class="ex"><span class="han">${hz}</span> ${py}</span><span class="tip">${tip}</span></button>`).join('')}</div>`).join('')}`;
+        <div class="py-grid">${g.items.map(([s, hz, py, tip]) => `<button class="py-cell" data-say="${HSK.withPy(hz, py)}"><b>${s}</b><span class="ex"><span class="han">${hz}</span> ${py}</span><span class="tip">${tip}</span></button>`).join('')}</div>`).join('')}`;
       t.innerHTML = `<p class="muted small">Click any sound to hear an example. Pay special attention to the <b>j q x</b>, <b>zh ch sh r</b> and <b>z c s</b> groups; they don't exist in English.</p>
         ${block('Initials (21)', P.initials)}${block('Finals', P.finals)}`;
     } else if (tab === 'rules') {
@@ -767,13 +768,13 @@ const Views = (() => {
     if (kind === 'tone') {
       for (let i = 0; i < 12; i++) {
         const q = P.quartets[Math.random() * P.quartets.length | 0]; const [hz, py, en] = q[Math.random() * 4 | 0];
-        qs.push({ q: 'Which tone is this?', say: hz, options: names.map((n, k) => ({ html: `<b class="t${k + 1}">${n}</b>`, value: k + 1 })), answer: HSK.py.tone(py),
+        qs.push({ q: 'Which tone is this?', say: HSK.withPy(hz, py), options: names.map((n, k) => ({ html: `<b class="t${k + 1}">${n}</b>`, value: k + 1 })), answer: HSK.py.tone(py),
           explain: `<span class="han">${hz}</span> <b>${py}</b> (${en})`, review: `<span class="han">${hz}</span> ${py}` });
       }
     } else if (kind === 'pair') {
       HSK.util.sample(P.pairs, 12).forEach(p => {
         const pick = p.items[Math.random() * 2 | 0];
-        qs.push({ q: `Which did you hear? <span class="pill">${p.label}</span>`, say: pick[0],
+        qs.push({ q: `Which did you hear? <span class="pill">${p.label}</span>`, say: HSK.withPy(pick[0], pick[1]),
           options: p.items.map(([hz, py]) => ({ html: `<b style="font-size:1.3rem">${py}</b>`, value: py })), answer: pick[1],
           explain: p.items.map(([hz, py]) => `<span class="han">${hz}</span> ${py}`).join(' vs '), review: `${p.label}: <span class="han">${pick[0]}</span> ${pick[1]}` });
       });
@@ -783,7 +784,7 @@ const Views = (() => {
       HSK.util.sample(words, 12).forEach(w => {
         const right = HSK.py.tones(w.py).join('-');
         const opts = HSK.util.shuffle([right, ...HSK.util.sample(pats.filter(p => p !== right), 3)]);
-        qs.push({ q: 'Which tone pattern do you hear?', say: w.hz,
+        qs.push({ q: 'Which tone pattern do you hear?', say: HSK.withPy(w.hz, w.py),
           options: opts.map(o => ({ html: `<b>${o.split('-').map(n => `<span class="t${n}">${n}</span>`).join(' + ')}</b>`, value: o })), answer: right,
           explain: `<span class="han">${w.hz}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `<span class="han">${w.hz}</span> ${pyHTML(w.py)}` });
       });
