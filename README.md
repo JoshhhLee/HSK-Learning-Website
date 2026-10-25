@@ -17,6 +17,7 @@ Chrome works too. Firefox has no speech recognition.
 |---|---|
 | Pinyin | Tones, sounds chart, spelling rules, listening drills (tones, similar sounds, tone pairs) |
 | Lessons | HSK 1–2 (15 lessons each), HSK 3 and HSK 4 (20 lessons each), HSK 5 lessons 1–18 (Book 5A): Words · Dialogue · Grammar · Writing · Practice · Speaking. HSK 3 adds sayings and character-building notes; HSK 4 adds reading passages |
+| Puzzle | Duolingo-style sentence puzzles: read the English (or listen), then tap or drag Chinese word tiles into order. Decoy tiles, missed sentences come back at the end, XP and combos. One per lesson (also a Puzzle tab in each lesson) plus a mixed round per level |
 | Review | Spaced-repetition flashcards (read / listen / recall) |
 | Writing | Stroke-order animation and tracing for every character, per level, plus the basic strokes |
 | Test | HSK-style practice test per level (listening + reading) |
@@ -45,7 +46,8 @@ js/data/pinyin.js   pinyin & stroke reference data
 
 Create `js/data/hsk6.js` calling `HSK.registerLevel({ level: 6, ... })` with the same shape as `hsk1.js`,
 then add a `<script>` tag for it in `index.html`. Sentences are written with spaces between words
-(`我 是 学生 。`). The app then generates pinyin, tap-to-translate and quizzes automatically.
+(`我 是 学生 。`). The app then generates pinyin, tap-to-translate, quizzes and sentence puzzles automatically
+(each word becomes one puzzle tile).
 To force a reading, write it in braces: `长{zhǎng}`, `过{guo}`, `着{zháo}`, `是不是{shì bu shì}`.
 Optional lesson fields: `culture`, `saying` ([hanzi, pinyin, literal, meaning]) and `charNote` ({title, body, chars}).
 Words already taught at a lower level are skipped automatically. Characters without their own gloss in
