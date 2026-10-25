@@ -5,6 +5,30 @@ const UI = (() => {
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
+  /** Line icons (24x24, drawn in the text colour), shared by every page. */
+  const ICONS = {
+    home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+    wave: '<path d="M3 10v4M7 7v10M11 4v16M15 8v8M19 10v4"/>',
+    book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 19.5v-15"/>',
+    puzzle: '<path d="M10 3H5a2 2 0 0 0-2 2v5h1.5a2 2 0 1 1 0 4H3v5a2 2 0 0 0 2 2h5v-1.5a2 2 0 1 1 4 0V21h5a2 2 0 0 0 2-2v-5h-1.5a2 2 0 1 1 0-4H21V5a2 2 0 0 0-2-2h-5v1.5a2 2 0 1 1-4 0z"/>',
+    refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>',
+    pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/>',
+    sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+    play: '<path d="M7 4.5v15l12-7.5z"/>',
+    speaker: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    flame: '<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-10-1.5 2-2 3.5-2 5-1-1-2-2-2-4C8 8 5 10.5 5 15c0 4 3 7 7 7z"/>',
+    cards: '<rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    download: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+    upload: '<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+  };
+  const ic = name => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+
+
   /** Coloured pinyin for a word: each syllable gets its tone class. */
   function pyHTML(py) {
     const syl = HSK.py.syllables(py);
@@ -22,7 +46,7 @@ const UI = (() => {
   }
 
   const sayBtn = (text, title = 'Listen') =>
-    `<button class="icon-btn" data-say="${esc(text)}" title="${title}" aria-label="${title}">▶</button>`;
+    `<button class="icon-btn" data-say="${esc(text)}" title="${title}" aria-label="${title}">${ic('play')}</button>`;
 
   /** Sentence with pinyin above each word; words are tappable. */
   function sentence(s, { marks } = {}) {
@@ -79,7 +103,7 @@ const UI = (() => {
       <div class="py">${py ? pyHTML(py) : ''}</div>
       <div class="en">${esc(w.en || '')}${w.level && !w.extra ? ` <span class="pill">HSK ${w.level}${w.lesson ? ' · L' + w.lesson : ''}</span>` : ''}</div>
       <div class="row">
-        <button class="btn sm" data-pop-strokes>✍ Strokes</button>
+        <button class="btn sm" data-pop-strokes>${ic('pen')}Strokes</button>
         ${w.level && !w.extra ? `<button class="btn sm" data-pop-add ${inDeck ? 'disabled' : ''}>${inDeck ? '✓ In review' : '+ Review'}</button>` : ''}
       </div>
       <div class="pop-writers row" style="justify-content:center"></div>`;
@@ -149,7 +173,7 @@ const UI = (() => {
           <div class="q">${Q.q}</div>
           ${Q.prompt ? `<div class="prompt">${Q.prompt}</div>` : ''}
           ${Q.say ? `<div class="row" style="justify-content:center;margin-bottom:14px">
-             <button class="btn primary" data-play>▶ Play</button><button class="btn" data-slow>🐢 Slow</button></div>` : ''}
+             <button class="btn primary" data-play>${ic('play')}Play</button><button class="btn" data-slow>Slow</button></div>` : ''}
           <div class="qbody"></div>
           <div class="fb"></div>
         </div></div>`;
@@ -219,7 +243,7 @@ const UI = (() => {
     const finish = () => {
       const pct = Math.round((right / questions.length) * 100);
       root.innerHTML = `<div class="quiz"><div class="card result">
-        <div class="big">${pct >= 80 ? '🎉' : pct >= 50 ? '💪' : '📚'}</div>
+        <div class="result-ic">${ic(pct >= 80 ? 'trophy' : 'target')}</div>
         <div class="score">${pct}%</div>
         <p class="muted">${right} of ${questions.length} correct${title ? ' · ' + esc(title) : ''}</p>
         ${wrong.length ? `<div style="text-align:left;margin:16px 0"><h3>Review these</h3>${wrong.map(q => `<div class="ex"><div>${q.review || q.q}</div></div>`).join('')}</div>` : ''}
@@ -266,14 +290,14 @@ const UI = (() => {
         <div class="pz-top">
           <button class="icon-btn" data-exit title="Quit" aria-label="Quit">✕</button>
           <div class="bar"><i style="width:${solved / total * 100}%"></i></div>
-          <span class="pz-combo ${combo >= 2 ? '' : 'hidden'}">🔥 ${combo}</span>
+          <span class="pz-combo ${combo >= 2 ? '' : 'hidden'}">${ic('flame')}${combo}</span>
         </div>
         ${it.tries ? '<span class="pill warn">↻ Previous mistake</span>' : ''}
         <h2>${mode === 'listen' ? 'Build what you hear' : 'Write this in Chinese'}</h2>
         <div class="pz-prompt">
           <span class="pz-mascot">学</span>
           <div class="pz-bubble">${mode === 'listen'
-            ? `<button class="btn primary" data-play>▶ Play</button><button class="btn" data-slow>🐢 Slow</button>`
+            ? `<button class="btn primary" data-play>${ic('play')}Play</button><button class="btn" data-slow>Slow</button>`
             : esc(it.en)}</div>
         </div>
         <div class="pz-answer empty" data-answer></div>
@@ -386,7 +410,7 @@ const UI = (() => {
           if (!it.tries) { firstTry++; xp += 10; } else xp += 5;
         } else { combo = 0; it.tries++; queue.push(it); }
         $('.pz-top .bar i', root).style.width = `${solved / total * 100}%`;
-        const c = $('.pz-combo', root); c.textContent = `🔥 ${combo}`; c.classList.toggle('hidden', combo < 2);
+        const c = $('.pz-combo', root); c.innerHTML = `${ic('flame')}${combo}`; c.classList.toggle('hidden', combo < 2);
         foot.className = `pz-foot ${ok ? 'ok' : 'no'}`;
         foot.innerHTML = `<div class="pz-fb">
             <b>${ok ? '✓ ' + PRAISE[Math.random() * PRAISE.length | 0] : skipped ? 'Skipped. The answer is:' : '✗ Correct answer:'}</b>
@@ -419,7 +443,7 @@ const UI = (() => {
       if (acc === 100) xp += 10; // perfect-round bonus
       const secs = Math.round((Date.now() - t0) / 1000);
       root.innerHTML = `<div class="pz"><div class="card result">
-        <div class="big">${acc === 100 ? '🏆' : acc >= 60 ? '🎉' : '💪'}</div>
+        <div class="result-ic">${ic(acc >= 60 ? 'trophy' : 'target')}</div>
         <h2>${acc === 100 ? 'Perfect round!' : 'Puzzle complete!'}</h2>
         <div class="stats" style="margin:18px 0">
           <div class="card stat"><b>+${xp}</b><span>XP${acc === 100 ? ' (incl. +10 bonus)' : ''}</span></div>
@@ -441,13 +465,13 @@ const UI = (() => {
   function speakRow(text, en) {
     return `<div class="speak-row" data-target="${esc(HSK.plain(text))}" data-spaced="${esc(text)}">
       <div><div class="spk-sent">${sentence(text)}</div>${en ? `<div class="small muted">${esc(en)}</div>` : ''}<div class="heard"></div></div>
-      <div class="row">${sayBtn(text)}<button class="icon-btn" data-mic title="Speak" aria-label="Speak">🎤</button></div>
+      <div class="row">${sayBtn(text)}<button class="icon-btn" data-mic title="Speak" aria-label="Speak">${ic('mic')}</button></div>
     </div>`;
   }
 
   function scoreClass(s) { return s >= 0.85 ? 'good' : s >= 0.5 ? 'mid' : 'bad'; }
 
-  /** Wire all 🎤 buttons inside root. onScore(score, row) is called after each attempt. */
+  /** Wire all microphone buttons inside root. onScore(score, row) is called after each attempt. */
   function wireMics(root, onScore) {
     $$('[data-mic]', root).forEach(btn => btn.onclick = async () => {
       if (!HSK.asr.supported) return toast('Speech recognition needs Chrome or Edge.');
@@ -477,8 +501,8 @@ const UI = (() => {
       heard.textContent = e.message === 'not-allowed'
         ? 'Microphone blocked. Allow mic access in the address bar.'
         : e.message === 'network' ? 'Speech recognition needs an internet connection.' : 'Error: ' + e.message;
-    } finally { btn.classList.remove('rec'); btn.textContent = '🎤'; }
+    } finally { btn.classList.remove('rec'); btn.innerHTML = ic('mic'); }
   }
 
-  return { $, $$, esc, pyHTML, hzHTML, sayBtn, sentence, toast, writer, quiz, puzzle, speakRow, wireMics, listenInto, scoreClass, openPop, closePop };
+  return { $, $$, esc, ic, pyHTML, hzHTML, sayBtn, sentence, toast, writer, quiz, puzzle, speakRow, wireMics, listenInto, scoreClass, openPop, closePop };
 })();

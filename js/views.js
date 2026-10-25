@@ -1,6 +1,8 @@
 /* Page views. Each view renders into #view and wires its own events. */
 const Views = (() => {
-  const { $, $$, esc, pyHTML, hzHTML, sayBtn, sentence, toast } = UI;
+  const { $, $$, esc, ic, pyHTML, hzHTML, sayBtn, sentence, toast } = UI;
+  // a dialogue line spoken by 📖 is a reading passage
+  const who = s => s === '📖' ? ic('book') : esc(s);
   const S = () => HSK.store.state;
   const PARTS = [
     ['words', 'Words'], ['dialogue', 'Dialogue'], ['grammar', 'Grammar'],
@@ -45,7 +47,7 @@ const Views = (() => {
       const opts = HSK.util.shuffle([w, ...Q.pool(w, pool, 3, 'hz')]);
       return { q: 'Listen. Which word did you hear?', say: HSK.withPy(w.hz, w.py),
         options: opts.map(o => ({ html: `<span class="hz">${esc(o.hz)}</span>`, value: o.hz })), answer: w.hz,
-        explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `🔊 <span class="han">${w.hz}</span> ${pyHTML(w.py)}` };
+        explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `${ic('speaker')} <span class="han">${w.hz}</span> ${pyHTML(w.py)}` };
     },
     pic(w, pool) {
       const seen = new Set([w.emoji]), others = [];
@@ -57,7 +59,7 @@ const Views = (() => {
       const opts = HSK.util.shuffle([w, ...others]);
       return { q: 'Listen and pick the picture.', say: HSK.withPy(w.hz, w.py), pics: true,
         options: opts.map(o => ({ html: o.emoji, value: o.hz })), answer: w.hz,
-        explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `🔊 <span class="han">${w.hz}</span> ${w.emoji} ${esc(w.en)}` };
+        explain: `<span class="han">${esc(w.hz)}</span> ${pyHTML(w.py)} · ${esc(w.en)}`, review: `${ic('speaker')} <span class="han">${w.hz}</span> ${w.emoji} ${esc(w.en)}` };
     },
     tone(w) {
       const syl = HSK.py.syllables(w.py);
@@ -87,7 +89,7 @@ const Views = (() => {
       const opts = HSK.util.shuffle([line, ...others]);
       return { q: 'Listen to the sentence. What does it mean?', say: line[1],
         options: opts.map(o => ({ html: esc(o[2]), value: o[1] })), answer: line[1],
-        explain: `<div style="margin-top:8px">${sentence(line[1])}</div>`, review: `🔊 <span class="han">${HSK.plain(line[1])}</span> · ${esc(line[2])}` };
+        explain: `<div style="margin-top:8px">${sentence(line[1])}</div>`, review: `${ic('speaker')} <span class="han">${HSK.plain(line[1])}</span> · ${esc(line[2])}` };
     },
     build(s, en) {
       const tokens = HSK.splitTokens(s).filter(t => HSK.isHan(t)).map(HSK.tokText);
@@ -189,7 +191,7 @@ const Views = (() => {
     const st = S().settings, mode = st.puzzleMode || 'en';
     return `<div class="row">
       <span class="small muted">Prompt</span>
-      <div class="seg">${[['en', '📖 Read English'], ['listen', '🎧 Listen']].map(([k, l]) =>
+      <div class="seg">${[['en', 'Read English'], ['listen', 'Listen']].map(([k, l]) =>
         `<button class="btn sm ${mode === k ? 'primary' : ''}" data-pzmode="${k}">${l}</button>`).join('')}</div>
       <label class="toggle"><input type="checkbox" data-pzpy ${st.puzzlePy !== false ? 'checked' : ''}> Pinyin on tiles</label>
     </div>`;
@@ -209,17 +211,16 @@ const Views = (() => {
     el.innerHTML = `
       <div class="hero">
         <div class="card welcome">
-          <div class="big">学</div>
           <h1>你好！Ready to study?</h1>
           <p>Work through each lesson in four skills: <b>read</b> the words and dialogues, <b>listen</b> to native-style audio, <b>speak</b> into the mic for instant feedback, and <b>write</b> characters stroke by stroke.</p>
           <div class="row">
-            <a class="btn" style="background:#fff;color:#8e2a20;border-color:#fff" href="#/lesson/${next.level}/${next.n}">Continue: HSK ${next.level} · Lesson ${next.n} →</a>
-            ${due ? `<a class="btn" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)" href="#/review">Review ${due} due</a>` : ''}
+            <a class="btn primary" href="#/lesson/${next.level}/${next.n}">Continue: HSK ${next.level} · Lesson ${next.n} →</a>
+            ${due ? `<a class="btn" href="#/review">Review ${due} due</a>` : ''}
           </div>
         </div>
         <div class="stack">
           <div class="stats">
-            <div class="card stat"><b>${streak}🔥</b><span>day streak</span></div>
+            <div class="card stat"><b>${streak}</b><span>day streak</span></div>
             <div class="card stat"><b>${cards}</b><span>words learning</span></div>
             <div class="card stat"><b>${due}</b><span>due now</span></div>
           </div>
@@ -268,7 +269,7 @@ const Views = (() => {
   /* ================= Level (lesson list) ================= */
   function level(el, n) {
     const L = HSK.levels[n];
-    if (!L) { el.innerHTML = `${levelTabs('level', n)}<div class="empty"><div class="big">🚧</div><h2>HSK ${n} is coming next</h2><p>This level will be added from the book.</p></div>`; return; }
+    if (!L) { el.innerHTML = `${levelTabs('level', n)}<div class="empty"><h2>HSK ${n} is coming next</h2><p>This level will be added from the book.</p></div>`; return; }
     el.innerHTML = `
       <div class="crumbs"><a href="#/">Home</a> / ${L.title}</div>
       ${levelTabs('level', n)}
@@ -333,7 +334,7 @@ const Views = (() => {
     const inDeck = ids.filter(id => HSK.srs.has(id)).length;
     t.innerHTML = `
       <div class="row" style="margin-bottom:14px">
-        <button class="btn" data-playall>▶ Play all</button>
+        <button class="btn" data-playall>${ic('play')}Play all</button>
         <label class="toggle"><input type="checkbox" data-color checked> Tone colours</label>
         <span class="spacer"></span>
         <button class="btn primary" data-add ${inDeck === ids.length ? 'disabled' : ''}>${inDeck === ids.length ? '✓ All in review' : `+ Add ${ids.length - inDeck} words to review`}</button>
@@ -371,7 +372,7 @@ const Views = (() => {
     const st = S().settings;
     t.innerHTML = `
       <div class="row" style="margin-bottom:16px">
-        <button class="btn primary" data-all>▶ Play whole dialogue</button>
+        <button class="btn primary" data-all>${ic('play')}Play whole dialogue</button>
         <label class="toggle"><input type="checkbox" data-py ${st.pinyin ? 'checked' : ''}> Pinyin</label>
         <label class="toggle"><input type="checkbox" data-en ${st.english ? 'checked' : ''}> English</label>
         <label class="toggle"><input type="checkbox" data-hide> Listening mode (blur text)</label>
@@ -379,9 +380,9 @@ const Views = (() => {
       <p class="small muted">Tap any word for its meaning and strokes. Tip: listen once in listening mode, then read along, then shadow each line out loud.</p>
       <div id="dlg" class="${st.pinyin ? '' : 'no-py'} ${st.english ? '' : 'no-en'}">
         ${ls.dialogues.map((d, di) => `<div class="card scene">
-          <h3>Scene ${di + 1} · ${esc(d.scene)} <span class="spacer"></span><button class="btn sm" data-scene="${di}">▶ Scene</button></h3>
+          <h3>Scene ${di + 1} · ${esc(d.scene)} <span class="spacer"></span><button class="btn sm" data-scene="${di}">${ic('play')}Scene</button></h3>
           ${d.lines.map((l, li) => `<div class="line" data-line="${di}-${li}">
-            <div class="who">${esc(l[0])}</div>
+            <div class="who">${who(l[0])}</div>
             <div>${sentence(l[1])}<div class="en">${esc(l[2])}</div></div>
             <div class="acts">${sayBtn(l[1])}</div>
           </div>`).join('')}
@@ -440,8 +441,8 @@ const Views = (() => {
         <div>
           <div class="writer-box" id="wbox"></div>
           <div class="row" style="margin-top:10px;justify-content:center">
-            <button class="btn sm" data-anim>▶ Animate</button>
-            <button class="btn sm primary" data-quiz>✍ Trace it</button>
+            <button class="btn sm" data-anim>${ic('play')}Animate</button>
+            <button class="btn sm primary" data-quiz>${ic('pen')}Trace it</button>
             <button class="btn sm" data-outline>Outline</button>
           </div>
         </div>
@@ -523,7 +524,7 @@ const Views = (() => {
     });
     const best = HSK.store.lesson(ls.id).best;
     t.innerHTML = `<div class="card quiz" style="text-align:center;padding:30px">
-      <div style="font-size:2.6rem">🎯</div>
+      <div class="result-ic">${ic('target')}</div>
       <h2>Lesson ${ls.n} practice</h2>
       <p class="muted">About 15 mixed questions: meanings, listening, tones, pictures, and building sentences. Score 60% or more to complete this part.${best ? ` Best score: <b>${best}%</b>.` : ''}</p>
       <button class="btn primary" data-go>Start</button></div>`;
@@ -535,7 +536,7 @@ const Views = (() => {
     const intro = () => {
       const best = HSK.store.lesson(ls.id).done.puzzle;
       t.innerHTML = `<div class="card quiz" style="text-align:center;padding:30px">
-        <div style="font-size:2.6rem">🧩</div>
+        <div class="result-ic">${ic('puzzle')}</div>
         <h2>Lesson ${ls.n} sentence puzzle</h2>
         <p class="muted">Read the English sentence, then tap or drag the Chinese word tiles into the right order. A few tiles don't belong, so watch out!${best ? ` Best: <b>${best}%</b> right first time.` : ''}</p>
         <div class="row" style="justify-content:center;margin-bottom:16px">${puzzleOpts()}</div>
@@ -566,13 +567,13 @@ const Views = (() => {
     t.innerHTML = `
       ${!HSK.asr.supported ? `<div class="notice" style="margin-bottom:14px">Speech recognition isn't available in this browser. Use <b>Chrome</b> or <b>Edge</b> (online) to get pronunciation feedback. You can still listen and repeat.</div>` : ''}
       <div class="card" style="margin-bottom:16px">
-        <h3>🎭 Role-play</h3>
+        <h3>Role-play</h3>
         <p class="muted small">The app plays one role. When it's your turn, the mic opens and you say your line.</p>
         <div class="row">${ls.dialogues.map((d, i) => `<button class="btn sm" data-role="${i}">Scene ${i + 1}: ${esc(d.scene)}</button>`).join('')}</div>
         <div id="roleplay"></div>
       </div>
       <div class="grid g2">
-        <div class="card"><h3>Words</h3><p class="small muted">▶ listen, then 🎤 say it. Green characters were recognised.</p>
+        <div class="card"><h3>Words</h3><p class="small muted">Listen first, then press the microphone and say it. Green characters were recognised.</p>
           ${ls.words.map(w => UI.speakRow(HSK.withPy(w.hz, w.py), `${HSK.py.word(w.py)} · ${w.en}`)).join('')}</div>
         <div class="card"><h3>Sentences</h3><p class="small muted">Get 5 items to 70%+ to complete this part.</p>
           ${lines.map(l => UI.speakRow(l[1], l[2])).join('')}</div>
@@ -583,12 +584,12 @@ const Views = (() => {
 
   async function rolePlay(box, dlg, onScore) {
     const roles = [...new Set(dlg.lines.map(l => l[0]))];
-    box.innerHTML = `<p style="margin-top:12px">Which role do you want to play?</p><div class="row">${roles.map(r => `<button class="btn" data-me="${esc(r)}">${esc(r)}</button>`).join('')}</div>`;
+    box.innerHTML = `<p style="margin-top:12px">Which role do you want to play?</p><div class="row">${roles.map(r => `<button class="btn" data-me="${esc(r)}">${who(r)}</button>`).join('')}</div>`;
     $$('[data-me]', box).forEach(b => b.onclick = async () => {
       const me = b.dataset.me;
       box.innerHTML = `<div class="stack" style="margin-top:12px">${dlg.lines.map((l, i) =>
         l[0] === me ? `<div class="card" style="padding:10px 14px" data-i="${i}">${UI.speakRow(l[1], l[2]).replace('speak-row', 'speak-row mine')}</div>`
-          : `<div style="padding:4px 14px" data-i="${i}"><span class="pill">${esc(l[0])}</span> ${sentence(l[1])}<div class="small muted">${esc(l[2])}</div></div>`).join('')}
+          : `<div style="padding:4px 14px" data-i="${i}"><span class="pill">${who(l[0])}</span> ${sentence(l[1])}<div class="small muted">${esc(l[2])}</div></div>`).join('')}
         <div class="row"><button class="btn sm" data-stop>Stop</button></div></div>`;
       UI.wireMics(box, onScore);
       let stop = false;
@@ -613,7 +614,7 @@ const Views = (() => {
     const all = Object.keys(S().cards);
     const due = HSK.util.shuffle(HSK.srs.due());
     if (!all.length) {
-      el.innerHTML = `<h1>Review</h1><div class="card empty"><div class="big">🗂️</div><h2>Your deck is empty</h2>
+      el.innerHTML = `<h1>Review</h1><div class="card empty"><div class="result-ic">${ic('cards')}</div><h2>Your deck is empty</h2>
         <p>Open a lesson's <b>Words</b> tab and press <b>Add to review</b>. Words then come back here right before you'd forget them.</p>
         <a class="btn primary" href="#/lesson/1/1">Go to Lesson 1</a></div>`;
       return;
@@ -641,7 +642,7 @@ const Views = (() => {
       if (i >= queue.length) {
         App.refreshBadge();
         const next = Object.values(S().cards).reduce((m, c) => Math.min(m, c.due), Infinity);
-        box.innerHTML = `<div class="card empty"><div class="big">✅</div><h2>${reviewed ? `Done! ${reviewed} reviewed` : 'Nothing due right now'}</h2>
+        box.innerHTML = `<div class="card empty"><div class="result-ic">${ic('check')}</div><h2>${reviewed ? `Done! ${reviewed} reviewed` : 'Nothing due right now'}</h2>
           <p class="muted">Next review ${isFinite(next) ? fmtWhen(next) : '-'}.</p>
           <div class="row" style="justify-content:center"><button class="btn" data-ahead>Study 10 words anyway</button><a class="btn primary" href="#/level/1">Learn new words</a></div></div>`;
         $('[data-ahead]', box).onclick = () => { queue = HSK.util.sample(all, Math.min(10, all.length)); i = 0; show(); };
@@ -650,7 +651,7 @@ const Views = (() => {
       const id = queue[i], w = HSK.dict.get(id);
       const m = mode === 'mix' ? ['read', 'listen', 'recall'][Math.random() * 3 | 0] : mode;
       const front = m === 'read' ? `<div class="hz">${esc(w.hz)}</div>`
-        : m === 'listen' ? `<div style="font-size:3rem">🔊</div><button class="btn" data-say="${esc(HSK.withPy(w.hz, w.py))}">Play again</button>`
+        : m === 'listen' ? `<div class="result-ic">${ic('speaker')}</div><button class="btn" data-say="${esc(HSK.withPy(w.hz, w.py))}">Play again</button>`
         : `<div style="font-size:1.6rem;font-weight:600">${esc(w.en)}</div><div class="muted small">Say or write the Chinese</div>`;
       box.innerHTML = `<div class="quiz">
         <div class="progress-top"><span class="small muted">${i + 1} / ${queue.length}</span><div class="bar"><i style="width:${i / queue.length * 100}%"></i></div></div>
@@ -742,7 +743,7 @@ const Views = (() => {
           <div class="small muted">${tn.tip}</div></div>`).join('')}</div>
         <h2 class="section">Hear the difference</h2>
         <p class="muted small">Each row is the same syllable in four tones. Click a character to hear it, or play the whole row.</p>
-        <div class="stack">${P.quartets.map((q, i) => `<div class="card" style="padding:12px"><div class="row" style="margin-bottom:8px"><b>${HSK.py.strip(q[0][1])}</b><span class="spacer"></span><button class="btn sm" data-q="${i}">▶ Play row</button></div>
+        <div class="stack">${P.quartets.map((q, i) => `<div class="card" style="padding:12px"><div class="row" style="margin-bottom:8px"><b>${HSK.py.strip(q[0][1])}</b><span class="spacer"></span><button class="btn sm" data-q="${i}">${ic('play')}Play row</button></div>
           <div class="quartet">${q.map(([hz, py, en]) => `<button data-say="${HSK.withPy(hz, py)}"><span class="hz">${hz}</span><b class="t${HSK.py.tone(py)}">${py}</b><div class="small muted">${en}</div></button>`).join('')}</div></div>`).join('')}</div>`;
       $$('[data-q]', t).forEach(b => b.onclick = async () => { for (const [hz, py] of P.quartets[+b.dataset.q]) { await HSK.tts.say(HSK.withPy(hz, py), { rate: 0.7 }); await wait(300); } });
     } else if (tab === 'sounds') {
@@ -754,9 +755,9 @@ const Views = (() => {
       t.innerHTML = `<div class="grid g2">${P.rules.map(r => `<div class="card"><h3>${r.title}</h3><div class="muted">${r.body}</div></div>`).join('')}</div>`;
     } else {
       t.innerHTML = `<div class="grid g3">
-        <button class="card" data-drill="tone" style="text-align:left;cursor:pointer"><h3>🎵 Single tones</h3><p class="muted small">Hear one syllable and pick its tone (1–4).</p></button>
-        <button class="card" data-drill="pair" style="text-align:left;cursor:pointer"><h3>👂 Similar sounds</h3><p class="muted small">j/zh, q/ch, x/sh, -n/-ng… which one did you hear?</p></button>
-        <button class="card" data-drill="two" style="text-align:left;cursor:pointer"><h3>🎶 Two-syllable words</h3><p class="muted small">Hear an HSK 1 word and pick its tone pattern.</p></button>
+        <button class="card" data-drill="tone" style="text-align:left;cursor:pointer"><h3>Single tones</h3><p class="muted small">Hear one syllable and pick its tone (1–4).</p></button>
+        <button class="card" data-drill="pair" style="text-align:left;cursor:pointer"><h3>Similar sounds</h3><p class="muted small">j/zh, q/ch, x/sh, -n/-ng… which one did you hear?</p></button>
+        <button class="card" data-drill="two" style="text-align:left;cursor:pointer"><h3>Two-syllable words</h3><p class="muted small">Hear an HSK 1 word and pick its tone pattern.</p></button>
       </div><div id="drill" class="section"></div>`;
       $$('[data-drill]', t).forEach(b => b.onclick = () => drill($('#drill', t), b.dataset.drill));
     }
@@ -815,8 +816,8 @@ const Views = (() => {
       <div class="card row">
         ${puzzleOpts()}
         <span class="spacer"></span>
-        <span class="pill warn">⚡ ${S().xp || 0} XP</span>
-        <a class="btn primary" href="#/puzzle/${lvN}/mix">🎲 Mixed ${L.title}</a>
+        <span class="pill warn">${S().xp || 0} XP</span>
+        <a class="btn primary" href="#/puzzle/${lvN}/mix">Mixed ${L.title}</a>
       </div>
       <div class="stack section">
         ${L.lessons.map(ls => {
@@ -887,12 +888,12 @@ const Views = (() => {
           <span class="small muted">Voices with “Natural” or “Online” in the name (Edge) sound the most human.</span></div>
         <div class="field"><label>Speed: <span data-ratev>${st.rate}</span>×</label>
           <input type="range" min="0.5" max="1.2" step="0.05" value="${st.rate}" data-rate></div>
-        <button class="btn" data-say="你好，我是你的汉语老师。我们一起学习吧！">▶ Test voice</button>
+        <button class="btn" data-say="你好，我是你的汉语老师。我们一起学习吧！">${ic('play')}Test voice</button>
       </div>
       <div class="card section">
         <h2>Speaking</h2>
         <p class="muted">Speech recognition: <b>${HSK.asr.supported ? '✓ available' : '✗ not available (use Chrome or Edge)'}</b>. It sends your voice to the browser's online speech service, so you need an internet connection.</p>
-        ${HSK.asr.supported ? `<div data-target="你好" data-spaced="你 好" class="speak-row" style="border:0;padding:0"><div><div class="spk-sent">${sentence('你 好')}</div><div class="heard"></div></div><div><button class="icon-btn" data-mic>🎤</button></div></div>` : ''}
+        ${HSK.asr.supported ? `<div data-target="你好" data-spaced="你 好" class="speak-row" style="border:0;padding:0"><div><div class="spk-sent">${sentence('你 好')}</div><div class="heard"></div></div><div><button class="icon-btn" data-mic aria-label="Speak">${ic('mic')}</button></div></div>` : ''}
       </div>
       <div class="card section">
         <h2>Theme</h2>
@@ -901,7 +902,7 @@ const Views = (() => {
       <div class="card section">
         <h2>Your progress</h2>
         <p class="muted small">Progress is stored in this browser only. Export it to back it up or move it to another computer.</p>
-        <div class="row"><button class="btn" data-export>⬇ Export</button><label class="btn">⬆ Import<input type="file" accept=".json" data-import hidden></label>
+        <div class="row"><button class="btn" data-export>${ic('download')}Export</button><label class="btn">${ic('upload')}Import<input type="file" accept=".json" data-import hidden></label>
           <span class="spacer"></span><button class="btn" data-reset style="color:var(--accent)">Reset everything</button></div>
       </div>`;
     $('[data-voice]', el).onchange = e => { st.voice = e.target.value; HSK.store.save(); HSK.tts.speak('你好'); };
