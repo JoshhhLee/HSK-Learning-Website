@@ -231,6 +231,212 @@ const UI = (() => {
     render();
   }
 
+  /* ---------- Sentence puzzle ----------
+   * Duolingo-style: read the English (or listen), then tap or drag word tiles into order.
+   * items: [{ s: spaced sentence, en, distractors: [{ hz, py }] }]
+   * Missed sentences come back at the end until they are solved.
+   */
+  const TIME_RE = /^(今天|明天|昨天|后天|前天|现在|今年|明年|去年|上午|下午|中午|晚上|早上|刚才|最近|以前|以后|周末|星期.)$/;
+  const SUBJ = new Set(['我', '你', '他', '她', '它', '您', '我们', '你们', '他们', '她们', '大家', '咱们']);
+  const PRAISE = ['Nice!', 'Great job!', '太好了！', 'Excellent!', '很好！', 'Well done!'];
+
+  function puzzle(root, items, { mode = 'en', pinyin = true, next, onExit, onFinish } = {}) {
+    const queue = items.map(it => ({ ...it, tries: 0 }));
+    const total = items.length;
+    let solved = 0, firstTry = 0, xp = 0, combo = 0;
+    const t0 = Date.now();
+
+    // "今天 我 去" and "我 今天 去" are both fine: accept a swapped time word + subject at the start
+    const accepted = want => {
+      const out = [want];
+      if (want.length >= 2 && (TIME_RE.test(want[0]) && SUBJ.has(want[1]) || SUBJ.has(want[0]) && TIME_RE.test(want[1])))
+        out.push([want[1], want[0], ...want.slice(2)]);
+      return out;
+    };
+
+    const ask = it => {
+      const target = HSK.tokenize(it.s).filter(t => !t.punct);
+      const want = target.map(t => t.hz);
+      const tiles = [...target, ...it.distractors].map((t, id) => ({ hz: t.hz, py: t.py, id }));
+      let bank = HSK.util.shuffle(tiles);
+      if (bank.map(t => t.hz).join() === want.join() && want.length > 1) bank.reverse();
+      let answer = [], locked = false, drag = null, suppressClick = false;
+
+      root.innerHTML = `<div class="pz ${pinyin ? 'with-py' : ''}">
+        <div class="pz-top">
+          <button class="icon-btn" data-exit title="Quit" aria-label="Quit">✕</button>
+          <div class="bar"><i style="width:${solved / total * 100}%"></i></div>
+          <span class="pz-combo ${combo >= 2 ? '' : 'hidden'}">🔥 ${combo}</span>
+        </div>
+        ${it.tries ? '<span class="pill warn">↻ Previous mistake</span>' : ''}
+        <h2>${mode === 'listen' ? 'Build what you hear' : 'Write this in Chinese'}</h2>
+        <div class="pz-prompt">
+          <span class="pz-mascot">学</span>
+          <div class="pz-bubble">${mode === 'listen'
+            ? `<button class="btn primary" data-play>▶ Play</button><button class="btn" data-slow>🐢 Slow</button>`
+            : esc(it.en)}</div>
+        </div>
+        <div class="pz-answer empty" data-answer></div>
+        <div class="pz-bank" data-bank></div>
+        <div class="pz-foot" data-foot>
+          <button class="btn" data-skip>Skip</button><span class="spacer"></span>
+          <button class="btn primary pz-go" data-check disabled>Check</button>
+        </div>
+      </div>`;
+      const ansEl = $('[data-answer]', root), bankEl = $('[data-bank]', root), foot = $('[data-foot]', root);
+      const tileEl = {}, slotEl = {};
+      bank.forEach(t => {
+        const s = document.createElement('span'); s.className = 'pz-slot';
+        const b = document.createElement('button'); b.className = 'pz-tile'; b.setAttribute('aria-label', t.hz);
+        b.innerHTML = `${pinyin && t.py ? `<span class="p">${pyHTML(t.py)}</span>` : ''}<span class="h">${esc(t.hz)}</span>`;
+        s.appendChild(b); bankEl.appendChild(s);
+        tileEl[t.id] = b; slotEl[t.id] = s;
+        wireTile(t, b);
+      });
+      // slots keep their size so the bank doesn't reflow as tiles leave it
+      bank.forEach(t => {
+        const r = tileEl[t.id].getBoundingClientRect();
+        slotEl[t.id].style.width = Math.ceil(r.width) + 'px'; slotEl[t.id].style.height = Math.ceil(r.height) + 'px';
+      });
+
+      if (mode === 'listen') {
+        $('[data-play]', root).onclick = () => HSK.tts.speak(it.s);
+        $('[data-slow]', root).onclick = () => HSK.tts.speak(it.s, { rate: 0.55 });
+        setTimeout(() => HSK.tts.speak(it.s), 250);
+      }
+      $('[data-exit]', root).onclick = () => { App.keyHandler = null; HSK.tts.stop(); onExit && onExit(); };
+      $('[data-skip]', root).onclick = () => check(true);
+      $('[data-check]', root).onclick = () => check(false);
+
+      /** Move tiles to where `answer` says they belong, animating from their old spots (FLIP). */
+      function layout() {
+        const before = new Map(tiles.map(t => [t.id, tileEl[t.id].getBoundingClientRect()]));
+        tiles.forEach(t => { tileEl[t.id].style.transform = ''; tileEl[t.id].classList.remove('dragging'); });
+        answer.forEach(id => ansEl.appendChild(tileEl[id]));
+        tiles.forEach(t => { if (!answer.includes(t.id)) slotEl[t.id].appendChild(tileEl[t.id]); });
+        tiles.forEach(t => {
+          const a = before.get(t.id), b = tileEl[t.id].getBoundingClientRect();
+          const dx = a.left - b.left, dy = a.top - b.top;
+          if (dx || dy) tileEl[t.id].animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        });
+        ansEl.classList.toggle('empty', !answer.length);
+        $('[data-check]', root).disabled = !answer.length;
+      }
+
+      function toggle(t) {
+        if (answer.includes(t.id)) answer = answer.filter(x => x !== t.id);
+        else { answer.push(t.id); HSK.tts.speak(t.hz); }
+        layout();
+      }
+
+      const inside = (el, e, pad = 0) => {
+        const r = el.getBoundingClientRect();
+        return e.clientX >= r.left - pad && e.clientX <= r.right + pad && e.clientY >= r.top - pad && e.clientY <= r.bottom + pad;
+      };
+
+      function wireTile(t, b) {
+        b.onclick = () => { if (!suppressClick && !locked) toggle(t); };
+        b.onpointerdown = e => {
+          if (locked || e.button) return;
+          drag = { id: t.id, x: e.clientX, y: e.clientY, moved: false };
+          b.setPointerCapture(e.pointerId);
+        };
+        b.onpointermove = e => {
+          if (!drag || drag.id !== t.id) return;
+          const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+          if (!drag.moved && Math.hypot(dx, dy) < 6) return;
+          drag.moved = true;
+          b.classList.add('dragging'); b.style.transform = `translate(${dx}px, ${dy}px)`;
+          ansEl.classList.toggle('over', inside(ansEl, e, 20));
+        };
+        b.onpointerup = e => {
+          if (!drag || drag.id !== t.id) return;
+          const moved = drag.moved; drag = null;
+          if (!moved) return;
+          suppressClick = true; setTimeout(() => (suppressClick = false));
+          ansEl.classList.remove('over');
+          const was = answer.includes(t.id);
+          answer = answer.filter(x => x !== t.id);
+          if (inside(ansEl, e, 20)) {
+            // insert before the first tile the pointer is above or to the left of
+            let at = answer.length;
+            for (let k = 0; k < answer.length; k++) {
+              const r = tileEl[answer[k]].getBoundingClientRect();
+              if (e.clientY < r.top || (e.clientY <= r.bottom && e.clientX < r.left + r.width / 2)) { at = k; break; }
+            }
+            answer.splice(at, 0, t.id);
+            if (!was) HSK.tts.speak(t.hz);
+          }
+          layout();
+        };
+        b.onpointercancel = () => { drag = null; ansEl.classList.remove('over'); layout(); };
+      }
+
+      function check(skipped) {
+        if (locked) return;
+        locked = true;
+        const got = answer.map(id => tiles[id].hz);
+        const ok = !skipped && accepted(want).some(a => a.join('|') === got.join('|'));
+        const exact = got.join('|') === want.join('|');
+        $$('.pz-tile', root).forEach(b => (b.disabled = true));
+        ansEl.classList.add(ok ? 'ok' : 'no');
+        queue.shift();
+        if (ok) {
+          solved++; combo++;
+          if (!it.tries) { firstTry++; xp += 10; } else xp += 5;
+        } else { combo = 0; it.tries++; queue.push(it); }
+        $('.pz-top .bar i', root).style.width = `${solved / total * 100}%`;
+        const c = $('.pz-combo', root); c.textContent = `🔥 ${combo}`; c.classList.toggle('hidden', combo < 2);
+        foot.className = `pz-foot ${ok ? 'ok' : 'no'}`;
+        foot.innerHTML = `<div class="pz-fb">
+            <b>${ok ? '✓ ' + PRAISE[Math.random() * PRAISE.length | 0] : skipped ? 'Skipped. The answer is:' : '✗ Correct answer:'}</b>
+            ${ok && !exact ? '<div class="small muted">Also correct. The lesson says it like this:</div>' : ''}
+            ${sentence(it.s)}
+            ${mode === 'listen' || !ok ? `<div class="small muted">${esc(it.en)}</div>` : ''}
+          </div>
+          <button class="btn ${ok ? 'jade' : 'primary'} pz-go" data-continue>Continue</button>`;
+        const cont = $('[data-continue]', foot);
+        cont.onclick = run; cont.focus({ preventScroll: true });
+        foot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        HSK.tts.speak(it.s);
+      }
+
+      App.keyHandler = e => {
+        if (e.key === 'Enter') { e.preventDefault(); locked ? run() : answer.length && check(false); }
+        else if (e.key === 'Backspace' && !locked && answer.length) { e.preventDefault(); answer.pop(); layout(); }
+        else if (/^[1-9]$/.test(e.key) && !locked) {
+          const t = bank[+e.key - 1];
+          if (t && !answer.includes(t.id)) toggle(t);
+        }
+      };
+    };
+
+    const run = () => (queue.length ? ask(queue[0]) : finish());
+
+    const finish = () => {
+      App.keyHandler = null;
+      const acc = Math.round(firstTry / total * 100);
+      if (acc === 100) xp += 10; // perfect-round bonus
+      const secs = Math.round((Date.now() - t0) / 1000);
+      root.innerHTML = `<div class="pz"><div class="card result">
+        <div class="big">${acc === 100 ? '🏆' : acc >= 60 ? '🎉' : '💪'}</div>
+        <h2>${acc === 100 ? 'Perfect round!' : 'Puzzle complete!'}</h2>
+        <div class="stats" style="margin:18px 0">
+          <div class="card stat"><b>+${xp}</b><span>XP${acc === 100 ? ' (incl. +10 bonus)' : ''}</span></div>
+          <div class="card stat"><b>${acc}%</b><span>right first time</span></div>
+          <div class="card stat"><b>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}</b><span>time</span></div>
+        </div>
+        <div class="row" style="justify-content:center">
+          <button class="btn" data-again>Practise again</button>
+          ${next ? `<a class="btn primary" href="${next.href}">${esc(next.label)} →</a>` : ''}
+        </div></div></div>`;
+      $('[data-again]', root).onclick = () => onFinish && onFinish('again');
+      onFinish && onFinish({ xp, acc, secs });
+    };
+
+    run();
+  }
+
   /* ---------- Speaking row ---------- */
   function speakRow(text, en) {
     return `<div class="speak-row" data-target="${esc(HSK.plain(text))}" data-spaced="${esc(text)}">
@@ -274,5 +480,5 @@ const UI = (() => {
     } finally { btn.classList.remove('rec'); btn.textContent = '🎤'; }
   }
 
-  return { $, $$, esc, pyHTML, hzHTML, sayBtn, sentence, toast, writer, quiz, speakRow, wireMics, listenInto, scoreClass, openPop, closePop };
+  return { $, $$, esc, pyHTML, hzHTML, sayBtn, sentence, toast, writer, quiz, puzzle, speakRow, wireMics, listenInto, scoreClass, openPop, closePop };
 })();

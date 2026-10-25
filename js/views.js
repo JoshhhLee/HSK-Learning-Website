@@ -4,7 +4,7 @@ const Views = (() => {
   const S = () => HSK.store.state;
   const PARTS = [
     ['words', 'Words'], ['dialogue', 'Dialogue'], ['grammar', 'Grammar'],
-    ['write', 'Writing'], ['practice', 'Practice'], ['speak', 'Speaking'],
+    ['write', 'Writing'], ['practice', 'Practice'], ['puzzle', 'Puzzle'], ['speak', 'Speaking'],
   ];
   const TRACKED = ['words', 'dialogue', 'write', 'practice', 'speak'];
 
@@ -136,6 +136,69 @@ const Views = (() => {
     return HSK.util.shuffle(qs);
   }
 
+  /* ================= Sentence puzzle data ================= */
+  const PUZZLE_MAX = 12; // word tiles in one sentence, before distractors
+  const puzzleLines = ls => lessonSentences(ls).filter(l => {
+    const n = HSK.splitTokens(l[1]).filter(HSK.isHan).length;
+    return l[0] !== '📖' && l[2] && n >= 2 && n <= PUZZLE_MAX;
+  });
+
+  /** Wrong tiles: words the learner knows that can't slip into the sentence by accident
+   *  (no shared characters, no homophones, no same meaning). Half come from the lesson itself. */
+  function distractors(s, ls) {
+    const toks = HSK.tokenize(s).filter(t => !t.punct);
+    const chars = new Set(HSK.plain(s)), pys = new Set(toks.map(t => t.py)), ens = new Set(toks.map(t => t.en));
+    const want = toks.length <= 3 ? 2 : toks.length <= 6 ? 3 : 4;
+    const fits = w => w.en && !/name\)|surname/.test(w.en) && !ens.has(w.en) && !pys.has(w.py) && ![...w.hz].some(c => chars.has(c));
+    const own = HSK.util.shuffle(ls.words.filter(fits)).slice(0, Math.ceil(want / 2));
+    const rest = HSK.util.shuffle(HSK.wordsUpTo(ls.level, ls.n).filter(fits));
+    const out = [], used = new Set();
+    for (const w of [...own, ...rest]) {
+      if (used.has(w.hz)) continue;
+      used.add(w.hz); out.push({ hz: w.hz, py: w.py });
+      if (out.length === want) break;
+    }
+    return out;
+  }
+
+  /** Up to `n` puzzle sentences from `lessons`, topped up from `extra` if there are fewer than 6. */
+  function puzzleItems(lessons, extra = [], n = 10) {
+    const seen = new Set();
+    const collect = list => list.flatMap(ls => puzzleLines(ls).map(l => ({ s: l[1], en: l[2], ls })))
+      .filter(x => !seen.has(HSK.plain(x.s)) && seen.add(HSK.plain(x.s)));
+    let picked = HSK.util.sample(collect(lessons), n);
+    if (picked.length < 6) picked = [...picked, ...HSK.util.sample(collect(extra), 6 - picked.length)];
+    return picked.map(x => ({ s: x.s, en: x.en, distractors: distractors(x.s, x.ls) }));
+  }
+  const lessonPuzzleItems = ls => puzzleItems([ls], HSK.levels[ls.level].lessons.filter(l => l.n < ls.n));
+
+  function runPuzzle(root, items, { onExit, again, next, onDone }) {
+    const st = S().settings;
+    UI.puzzle(root, items, {
+      mode: st.puzzleMode || 'en', pinyin: st.puzzlePy !== false, next, onExit,
+      onFinish: r => {
+        if (r === 'again') return again();
+        S().xp = (S().xp || 0) + r.xp; HSK.store.touchDay(); HSK.store.save();
+        onDone && onDone(r);
+      },
+    });
+  }
+
+  /** Prompt and pinyin choices shared by the Puzzle page and the lesson tab. */
+  const puzzleOpts = () => {
+    const st = S().settings, mode = st.puzzleMode || 'en';
+    return `<div class="row">
+      <span class="small muted">Prompt</span>
+      <div class="seg">${[['en', '📖 Read English'], ['listen', '🎧 Listen']].map(([k, l]) =>
+        `<button class="btn sm ${mode === k ? 'primary' : ''}" data-pzmode="${k}">${l}</button>`).join('')}</div>
+      <label class="toggle"><input type="checkbox" data-pzpy ${st.puzzlePy !== false ? 'checked' : ''}> Pinyin on tiles</label>
+    </div>`;
+  };
+  const wirePuzzleOpts = (root, rerender) => {
+    $$('[data-pzmode]', root).forEach(b => b.onclick = () => { S().settings.puzzleMode = b.dataset.pzmode; HSK.store.save(); rerender(); });
+    $('[data-pzpy]', root).onchange = e => { S().settings.puzzlePy = e.target.checked; HSK.store.save(); };
+  };
+
   /* ================= Home ================= */
   function home(el) {
     const cards = Object.keys(S().cards).length;
@@ -187,6 +250,7 @@ const Views = (() => {
           <li><b>Grammar:</b> short English notes with examples you can play.</li>
           <li><b>Writing:</b> watch the stroke order, then trace the characters yourself.</li>
           <li><b>Practice &amp; Speaking:</b> a mixed quiz, then say the words and sentences out loud.</li>
+          <li><b>Puzzle:</b> translate English sentences by putting Chinese word tiles in order, Duolingo-style.</li>
           <li>Come back every day for <b>Review</b>. Spaced repetition shows each word right before you'd forget it.</li>
         </ol>
       </div>`;
@@ -247,7 +311,7 @@ const Views = (() => {
         `<a href="#/lesson/${lvN}/${ls.n}/${k}" class="${k === tab ? 'on' : ''}">${label}${done[k] ? '<span class="tick">✓</span>' : ''}</a>`).join('')}</div>
       <div id="tab"></div>`;
     const t = $('#tab', el);
-    ({ words: lessonWords, dialogue: lessonDialogue, grammar: lessonGrammar, write: lessonWrite, practice: lessonPractice, speak: lessonSpeak }[tab] || lessonWords)(t, ls);
+    ({ words: lessonWords, dialogue: lessonDialogue, grammar: lessonGrammar, write: lessonWrite, practice: lessonPractice, puzzle: lessonPuzzle, speak: lessonSpeak }[tab] || lessonWords)(t, ls);
   }
 
   /** Split a lesson title into known words greedily so it gets pinyin. */
@@ -464,6 +528,28 @@ const Views = (() => {
       <p class="muted">About 15 mixed questions: meanings, listening, tones, pictures, and building sentences. Score 60% or more to complete this part.${best ? ` Best score: <b>${best}%</b>.` : ''}</p>
       <button class="btn primary" data-go>Start</button></div>`;
     $('[data-go]', t).onclick = start;
+  }
+
+  function lessonPuzzle(t, ls) {
+    const nextLs = HSK.lesson(ls.level, ls.n + 1);
+    const intro = () => {
+      const best = HSK.store.lesson(ls.id).done.puzzle;
+      t.innerHTML = `<div class="card quiz" style="text-align:center;padding:30px">
+        <div style="font-size:2.6rem">🧩</div>
+        <h2>Lesson ${ls.n} sentence puzzle</h2>
+        <p class="muted">Read the English sentence, then tap or drag the Chinese word tiles into the right order. A few tiles don't belong, so watch out!${best ? ` Best: <b>${best}%</b> right first time.` : ''}</p>
+        <div class="row" style="justify-content:center;margin-bottom:16px">${puzzleOpts()}</div>
+        <button class="btn primary" data-go>Start</button>
+        <p class="small muted" style="margin-top:14px">Keys: <b>1–9</b> pick a tile · <b>Backspace</b> undo · <b>Enter</b> check</p></div>`;
+      wirePuzzleOpts(t, intro);
+      $('[data-go]', t).onclick = play;
+    };
+    const play = () => runPuzzle(t, lessonPuzzleItems(ls), {
+      onExit: intro, again: play,
+      next: nextLs && { href: `#/lesson/${ls.level}/${nextLs.n}/puzzle`, label: `Lesson ${nextLs.n} puzzle` },
+      onDone: r => { HSK.store.markDone(ls.id, 'puzzle', Math.max(1, r.acc)); App.refreshTabs(); },
+    });
+    intro();
   }
 
   function lessonSpeak(t, ls) {
@@ -706,6 +792,46 @@ const Views = (() => {
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /* ================= Puzzle page ================= */
+  function puzzle(el, lvN, which) {
+    const L = HSK.levels[lvN] || HSK.levels[1]; lvN = L.level;
+    if (which) {
+      const ls = which === 'mix' ? null : HSK.lesson(lvN, which);
+      if (which !== 'mix' && !ls) { location.hash = `#/puzzle/${lvN}`; return; }
+      const nextLs = ls && HSK.lesson(lvN, ls.n + 1);
+      el.innerHTML = `<div class="crumbs"><a href="#/">Home</a> / <a href="#/puzzle/${lvN}">Puzzles</a> / ${L.title} · ${ls ? `Lesson ${ls.n}` : 'Mixed'}</div><div id="pz"></div>`;
+      runPuzzle($('#pz', el), ls ? lessonPuzzleItems(ls) : puzzleItems(L.lessons), {
+        onExit: () => { location.hash = `#/puzzle/${lvN}`; },
+        again: () => puzzle(el, lvN, which),
+        next: nextLs ? { href: `#/puzzle/${lvN}/${nextLs.n}`, label: `Lesson ${nextLs.n}` } : { href: `#/puzzle/${lvN}`, label: 'All puzzles' },
+        onDone: r => { if (ls) HSK.store.markDone(ls.id, 'puzzle', Math.max(1, r.acc)); },
+      });
+      return;
+    }
+    el.innerHTML = `<div class="crumbs"><a href="#/">Home</a> / Puzzles</div>
+      <h1>Sentence puzzles</h1>${levelTabs('puzzle', lvN)}
+      <p class="muted">See an English sentence, then put the Chinese word tiles in the right order to translate it. Tap a tile to add or remove it, or drag tiles to rearrange them. Some tiles are decoys!</p>
+      <div class="card row">
+        ${puzzleOpts()}
+        <span class="spacer"></span>
+        <span class="pill warn">⚡ ${S().xp || 0} XP</span>
+        <a class="btn primary" href="#/puzzle/${lvN}/mix">🎲 Mixed ${L.title}</a>
+      </div>
+      <div class="stack section">
+        ${L.lessons.map(ls => {
+          const best = HSK.store.lesson(ls.id).done.puzzle;
+          const n = puzzleLines(ls).length;
+          return `<a class="card lesson-item ${best ? 'done' : ''}" href="#/puzzle/${lvN}/${ls.n}">
+            <div class="num">${best ? '✓' : ls.n}</div>
+            <div><div class="zh">${esc(ls.zh)} <span class="muted" style="font:400 .9rem var(--font)">${esc(ls.en)}</span></div>
+              <div class="small muted">${n} sentences</div></div>
+            <div>${best ? `<span class="pill jade">Best ${best}%</span>` : '<span class="pill">Start</span>'}</div>
+          </a>`;
+        }).join('')}
+      </div>`;
+    wirePuzzleOpts(el, () => puzzle(el, lvN));
+  }
+
   /* ================= Mock test ================= */
   function test(el, lvN) {
     const L = HSK.levels[lvN];
@@ -801,5 +927,5 @@ const Views = (() => {
     if (r === '' || r === '#/' || r.startsWith('#/settings')) App.route();
   });
 
-  return { home, level, lesson, review, write, pinyin, test, settings };
+  return { home, level, lesson, review, write, pinyin, puzzle, test, settings };
 })();

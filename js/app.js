@@ -11,7 +11,7 @@ const App = {
     HSK.asr.stop();
     // remember the level being studied so the nav links open it
     const st = HSK.store.state.settings;
-    if (['level', 'lesson', 'write', 'test'].includes(name) && HSK.levels[+a]) { st.level = +a; HSK.store.save(); }
+    if (['level', 'lesson', 'write', 'test', 'puzzle'].includes(name) && HSK.levels[+a]) { st.level = +a; HSK.store.save(); }
     const lv = HSK.levels[st.level] ? st.level : 1;
     const views = {
       home: () => Views.home(view),
@@ -20,11 +20,12 @@ const App = {
       review: () => Views.review(view),
       write: () => Views.write(view, +(a || lv)),
       pinyin: () => Views.pinyin(view, a),
+      puzzle: () => Views.puzzle(view, +(a || lv), b),
       test: () => Views.test(view, +(a || lv)),
       settings: () => Views.settings(view),
     };
     document.querySelectorAll('#nav a').forEach(x => {
-      if (['level', 'write', 'test'].includes(x.dataset.r)) x.setAttribute('href', `#/${x.dataset.r}/${lv}`);
+      if (['level', 'write', 'test', 'puzzle'].includes(x.dataset.r)) x.setAttribute('href', `#/${x.dataset.r}/${lv}`);
     });
     (views[name] || views.home)();
     const navKey = name === 'lesson' ? 'level' : name;
